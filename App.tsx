@@ -11,8 +11,9 @@ import OrganiserView from './views/organiser/OrganiserView';
 import DashboardView from './views/dashboard/DashboardView';
 import DataLabsView from './views/datalabs/DataLabsView';
 import TeamDashboardView from './views/team/TeamDashboardView';
+import DocsView from './views/docs/DocsView';
 
-export type Module = 'control-center' | 'crm' | 'pm' | 'datalabs' | 'team-dashboard' | 'hr' | 'organiser';
+export type Module = 'control-center' | 'crm' | 'pm' | 'datalabs' | 'team-dashboard' | 'hr' | 'organiser' | 'docs';
 
 export interface ActiveView {
   module: Module;
@@ -100,6 +101,8 @@ const App: React.FC = () => {
         />;
       case 'datalabs':
         return <DataLabsView />;
+      case 'docs':
+        return <DocsView />;
       case 'team-dashboard':
         return <TeamDashboardView teamId={activeView.teamId} teamName={activeView.label}/>
       default:
