@@ -280,7 +280,27 @@ const DocsView: React.FC = () => {
                         >
                             <h4 className="text-xs text-gray-400 font-semibold uppercase px-2 py-1">Basic Blocks</h4>
                             {slashCommands.map(item => (
-                                <button key={item.title} onClick={() => item.command(editor)} className="w-full flex items-center text-left p-2 rounded-md hover:bg-gray-100 dark:hover:bg-slate-700">
+                                <button
+                                    key={item.title}
+                                    onClick={() => {
+                                        if (!editor) return;
+                                        const { state } = editor;
+                                        const { $from } = state.selection;
+                                        const currentLineText = $from.parent.textContent;
+
+                                        let range;
+                                        if (currentLineText === '/') {
+                                            // If the line just has a slash, the range to delete is that slash.
+                                            range = { from: $from.pos - 1, to: $from.pos };
+                                        } else {
+                                            // If the line is empty, we don't need to delete anything.
+                                            range = { from: $from.pos, to: $from.pos };
+                                        }
+                                        
+                                        item.command({ editor, range });
+                                    }}
+                                    className="w-full flex items-center text-left p-2 rounded-md hover:bg-gray-100 dark:hover:bg-slate-700"
+                                >
                                     <div className="p-2 bg-gray-100 dark:bg-slate-700 rounded-md mr-3 text-gray-600 dark:text-gray-300">{item.icon}</div>
                                     <div>
                                         <p className="font-semibold text-sm text-gray-800 dark:text-gray-200">{item.title}</p>
