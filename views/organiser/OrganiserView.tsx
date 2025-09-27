@@ -52,7 +52,7 @@ const TreeItem: React.FC<{
     return (
         <div>
             <div
-                className={`flex items-center p-2 rounded-md group ${selectedElementId === node.id ? 'bg-violet-100' : 'hover:bg-gray-100'}`}
+                className={`flex items-center p-2 rounded-md group ${selectedElementId === node.id ? 'bg-violet-100 dark:bg-violet-900/40' : 'hover:bg-gray-100 dark:hover:bg-slate-700'}`}
                 style={{ paddingLeft: `${level * 1.5}rem` }}
                 onClick={() => onSelect(node.id)}
                 draggable={isEditable}
@@ -62,18 +62,18 @@ const TreeItem: React.FC<{
             >
                 <div className="flex items-center flex-1 cursor-pointer">
                     <button
-                        className="mr-2 p-0.5 rounded hover:bg-gray-200"
+                        className="mr-2 p-0.5 rounded hover:bg-gray-200 dark:hover:bg-slate-600"
                         onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }}
                     >
                         {node.children.length > 0 && (
-                            <svg className={`w-3 h-3 text-gray-500 transition-transform ${isExpanded ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg className={`w-3 h-3 text-gray-500 dark:text-gray-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
                             </svg>
                         )}
                         {node.children.length === 0 && <div className="w-3 h-3" />}
                     </button>
-                    <Icon className="w-4 h-4 mr-2 text-gray-600" />
-                    <span className="text-sm font-medium text-gray-800">{node.label}</span>
+                    <Icon className="w-4 h-4 mr-2 text-gray-600 dark:text-gray-400" />
+                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{node.label}</span>
                 </div>
             </div>
             {isExpanded && node.children.length > 0 && (
@@ -111,13 +111,17 @@ const OrganiserView: React.FC<OrganiserViewProps> = ({ initialElements, currentU
 
     // Build the tree from the flat list of elements
     const orgTree = useMemo((): TreeNode[] => {
-        const elementMap = new Map(elements.map(el => [el.id, { ...el, children: [] } as TreeNode]));
+        // Fix: Explicitly type `elementMap` to correct type inference issues where `get` was returning `unknown`.
+        const elementMap: Map<string, TreeNode> = new Map(elements.map(el => [el.id, { ...el, children: [] } as TreeNode]));
         const roots: TreeNode[] = [];
         elements.forEach(el => {
+            const node = elementMap.get(el.id);
+            if (!node) return;
             if (el.parentId && elementMap.has(el.parentId)) {
-                elementMap.get(el.parentId)!.children.push(elementMap.get(el.id)!);
+                const parentNode = elementMap.get(el.parentId);
+                parentNode?.children.push(node);
             } else {
-                roots.push(elementMap.get(el.id)!);
+                roots.push(node);
             }
         });
         return roots;
@@ -191,14 +195,14 @@ const OrganiserView: React.FC<OrganiserViewProps> = ({ initialElements, currentU
     };
 
     return (
-        <div className="flex h-full bg-white rounded-lg shadow-inner border border-gray-200/50 overflow-hidden">
+        <div className="flex h-full bg-white dark:bg-gray-800 rounded-lg shadow-inner border border-gray-200/50 dark:border-slate-700/50 overflow-hidden">
             {/* Left Panel: Tree View */}
             <div 
-                className="w-1/3 min-w-80 bg-gray-50 border-r p-4 overflow-y-auto"
+                className="w-1/3 min-w-80 bg-gray-50 dark:bg-slate-800 border-r dark:border-slate-700 p-4 overflow-y-auto"
                 onDrop={(e) => handleDropOnParent(e, null)} // Drop here for root
                 onDragOver={handleDragOver}
             >
-                <h2 className="text-lg font-bold text-gray-800 mb-4">Company Structure</h2>
+                <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Company Structure</h2>
                 {orgTree.map(rootNode => (
                     <TreeItem
                         key={rootNode.id}
@@ -223,44 +227,44 @@ const OrganiserView: React.FC<OrganiserViewProps> = ({ initialElements, currentU
                                 Viewing in read-only mode. Only Executives can edit the structure.
                             </div>
                         )}
-                        <h3 className="text-xl font-bold text-gray-800 mb-4">Properties</h3>
+                        <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">Properties</h3>
                         <div className="space-y-4">
                             <div>
-                                <label className="text-sm font-medium text-gray-700">Label</label>
+                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Label</label>
                                 <input
                                     type="text"
                                     value={selectedElement.label}
                                     disabled={!isEditable}
                                     onChange={(e) => handleLabelChange(e.target.value)}
-                                    className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm focus:ring-violet-500 focus:border-violet-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                    className="w-full mt-1 p-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:ring-violet-500 focus:border-violet-500 disabled:bg-gray-700 disabled:cursor-not-allowed bg-transparent"
                                 />
                             </div>
                             <div>
-                                <label className="text-sm font-medium text-gray-700">Type</label>
-                                <p className="mt-1 p-2 bg-gray-100 rounded-md text-sm">{selectedElement.type}</p>
+                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Type</label>
+                                <p className="mt-1 p-2 bg-gray-100 dark:bg-gray-700 rounded-md text-sm">{selectedElement.type}</p>
                             </div>
                             {Object.entries(selectedElement.properties).map(([key, value]) => (
                                 <div key={key}>
-                                    <label className="text-sm font-medium text-gray-700">{key}</label>
+                                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{key}</label>
                                     <input
                                         type="text"
-                                        value={value}
+                                        value={String(value)}
                                         disabled={!isEditable}
                                         onChange={(e) => handlePropertyChange(key, e.target.value)}
-                                        className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm focus:ring-violet-500 focus:border-violet-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                        className="w-full mt-1 p-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:ring-violet-500 focus:border-violet-500 disabled:bg-gray-700 disabled:cursor-not-allowed bg-transparent"
                                     />
                                 </div>
                             ))}
                         </div>
                         {isEditable && (
-                            <div className="mt-8 border-t pt-6">
+                            <div className="mt-8 border-t dark:border-gray-700 pt-6">
                                 <h4 className="font-semibold mb-2">Add Child Element</h4>
                                 <div className="flex flex-wrap gap-2">
                                     {Object.values(OrganiserElementType).map(type => (
                                         <button
                                             key={type}
                                             onClick={() => addElement(type)}
-                                            className="px-3 py-1 text-sm rounded-md bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium"
+                                            className="px-3 py-1 text-sm rounded-md bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 font-medium"
                                         >
                                             + {type}
                                         </button>
@@ -270,7 +274,7 @@ const OrganiserView: React.FC<OrganiserViewProps> = ({ initialElements, currentU
                         )}
                     </div>
                 ) : (
-                    <div className="flex h-full items-center justify-center text-gray-500">
+                    <div className="flex h-full items-center justify-center text-gray-500 dark:text-gray-400">
                         <p>Select an element from the structure to view its details.</p>
                     </div>
                 )}

@@ -112,7 +112,8 @@ const StructureView: React.FC<StructureViewProps> = ({ initialElements, currentU
 
     // Build the tree from the flat list of elements
     const orgTree = useMemo((): TreeNode[] => {
-        const elementMap = new Map(elements.map(el => [el.id, { ...el, children: [] } as TreeNode]));
+        // Fix: Explicitly type `elementMap` to correct type inference issues where `get` was returning `unknown`.
+        const elementMap: Map<string, TreeNode> = new Map(elements.map(el => [el.id, { ...el, children: [] } as TreeNode]));
         const roots: TreeNode[] = [];
         elements.forEach(el => {
             if (el.parentId && elementMap.has(el.parentId)) {

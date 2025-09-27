@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
+        darkMode: 'class',
         theme: {
           extend: {
             colors: {
@@ -71,12 +72,13 @@
     "prosemirror-state": "https://aistudiocdn.com/prosemirror-state@^1.4.3",
     "prosemirror-view": "https://aistudiocdn.com/prosemirror-view@^1.35.0",
     "@tiptap/react": "https://aistudiocdn.com/@tiptap/react@^2.8.0",
-    "@tiptap/starter-kit": "https://aistudiocdn.com/@tiptap/starter-kit@^2.8.0"
+    "@tiptap/starter-kit": "https://aistudiocdn.com/@tiptap/starter-kit@^2.8.0",
+    "@tiptap/extension-placeholder": "https://aistudiocdn.com/@tiptap/extension-placeholder@^3.6.1"
   }
 }
 </script>
 </head>
-  <body class="bg-gray-100">
+  <body class="bg-gray-100 dark:bg-slate-900">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>

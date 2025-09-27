@@ -16,10 +16,10 @@ const TeamPipelineView: React.FC<{teamMembers: User[], allTeamDeals: Deal[]}> = 
     return (
         <div>
             <div className="mb-4">
-                <label htmlFor="team-member-select" className="block text-sm font-medium text-gray-700">Select Team Member</label>
+                <label htmlFor="team-member-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Select Team Member</label>
                 <select 
                     id="team-member-select"
-                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-violet-500 focus:border-violet-500 sm:text-sm rounded-md"
+                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:outline-none focus:ring-violet-500 focus:border-violet-500 sm:text-sm rounded-md"
                     value={selectedMemberId || ''}
                     onChange={e => setSelectedMemberId(Number(e.target.value))}
                 >
@@ -32,22 +32,22 @@ const TeamPipelineView: React.FC<{teamMembers: User[], allTeamDeals: Deal[]}> = 
 };
 
 const LeadAssignmentView: React.FC<{unassignedContacts: Contact[], teamMembers: User[]}> = ({ unassignedContacts, teamMembers }) => (
-    <div className="bg-white shadow rounded-lg overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+    <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-700/50">
                 <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contact</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Company</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assign To</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Contact</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Company</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Assign To</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {unassignedContacts.map(contact => (
-                    <tr key={contact.id} className="bg-white">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{contact.name}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{contact.company}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            <select className="border-gray-300 rounded-md text-sm">
+                    <tr key={contact.id} className="bg-white dark:bg-gray-800">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">{contact.name}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{contact.company}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                            <select className="border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-md text-sm">
                                 <option>Unassigned</option>
                                 {teamMembers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                             </select>
@@ -73,16 +73,16 @@ const TeamDashboardView: React.FC<{teamMembers: User[], allTeamDeals: Deal[]}> =
     }, [teamMembers, allTeamDeals]);
     
     return (
-        <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-lg font-semibold text-gray-800">Deals Won by Rep</h3>
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">Deals Won by Rep</h3>
             <div style={{ width: '100%', height: 300 }} className="mt-4">
                 <ResponsiveContainer>
                     <BarChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip />
-                        <Legend />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#4A5568" />
+                        <XAxis dataKey="name" tick={{ fill: '#A0AEC0' }} />
+                        <YAxis tick={{ fill: '#A0AEC0' }} />
+                        <Tooltip contentStyle={{ backgroundColor: '#2D3748', border: 'none' }} />
+                        <Legend wrapperStyle={{ color: '#A0AEC0' }} />
                         <Bar dataKey="dealsWon" fill="#7C3AED" name="Deals Won" />
                     </BarChart>
                 </ResponsiveContainer>
@@ -116,16 +116,16 @@ const ManagementCrmView: React.FC<ManagementCrmViewProps> = (props) => {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-4">Management CRM Portal</h1>
-      <div className="mb-6 border-b border-gray-200">
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">Management CRM Portal</h1>
+      <div className="mb-6 border-b border-gray-200 dark:border-gray-700">
         <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-          <button onClick={() => setActiveTab('pipeline')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'pipeline' ? 'border-violet-600 text-violet-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+          <button onClick={() => setActiveTab('pipeline')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'pipeline' ? 'border-violet-600 text-violet-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:border-gray-600'}`}>
             Team Pipeline
           </button>
-          <button onClick={() => setActiveTab('assignment')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'assignment' ? 'border-violet-600 text-violet-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+          <button onClick={() => setActiveTab('assignment')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'assignment' ? 'border-violet-600 text-violet-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:border-gray-600'}`}>
             Lead Assignment
           </button>
-          <button onClick={() => setActiveTab('dashboard')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'dashboard' ? 'border-violet-600 text-violet-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+          <button onClick={() => setActiveTab('dashboard')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'dashboard' ? 'border-violet-600 text-violet-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:border-gray-600'}`}>
             Team Dashboard
           </button>
         </nav>

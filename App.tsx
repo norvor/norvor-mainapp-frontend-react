@@ -12,6 +12,7 @@ import DataLabsView from './views/datalabs/DataLabsView';
 import TeamHubView from './views/teamhub/TeamHubView';
 import DocsView from './views/docs/DocsView';
 import RequestsView from './views/requests/RequestsView';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 
 export type Module = 'hub' | 'control-center' | 'crm' | 'pm' | 'datalabs' | 'hr' | 'organiser' | 'docs' | 'requests';
@@ -158,32 +159,34 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="relative flex h-screen bg-gray-100 text-gray-800">
-      <Sidebar 
-        currentUser={currentUser}
-        activeView={activeView}
-        onNavigate={handleNavigate}
-        isOpen={isSidebarOpen}
-        onToggleSidebar={toggleSidebar}
-        perspectives={perspectives}
-        onPerspectiveChange={handlePerspectiveChange}
-      />
+    <ThemeProvider>
+      <div className="relative flex h-screen bg-gray-100 dark:bg-slate-900 text-gray-800 dark:text-gray-200">
+        <Sidebar 
+          currentUser={currentUser}
+          activeView={activeView}
+          onNavigate={handleNavigate}
+          isOpen={isSidebarOpen}
+          onToggleSidebar={toggleSidebar}
+          perspectives={perspectives}
+          onPerspectiveChange={handlePerspectiveChange}
+        />
 
-      {isSidebarOpen && window.innerWidth < 1024 && (
-        <div 
-          onClick={toggleSidebar}
-          className="absolute inset-0 z-30 bg-gray-900/60 lg:hidden"
-          aria-hidden="true"
-        ></div>
-      )}
+        {isSidebarOpen && window.innerWidth < 1024 && (
+          <div 
+            onClick={toggleSidebar}
+            className="absolute inset-0 z-30 bg-gray-900/60 lg:hidden"
+            aria-hidden="true"
+          ></div>
+        )}
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header user={currentUser} onToggleSidebar={toggleSidebar} />
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6 lg:p-8">
-          {renderContent()}
-        </main>
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Header user={currentUser} onToggleSidebar={toggleSidebar} />
+          <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 dark:bg-slate-900 p-6 lg:p-8">
+            {renderContent()}
+          </main>
+        </div>
       </div>
-    </div>
+    </ThemeProvider>
   );
 };
 
