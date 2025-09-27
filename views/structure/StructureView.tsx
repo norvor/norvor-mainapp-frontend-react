@@ -1,5 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
+// Fix: Use OrganiserElement and OrganiserElementType from types.ts as Structure types are deprecated.
 import { OrganiserElement, OrganiserElementType, User, UserRole } from '../../types';
 
 // Icons for tree nodes
@@ -10,7 +11,7 @@ import SoftwareIcon from '../../components/icons/SoftwareIcon';
 import ProcessIcon from '../../components/icons/ProcessIcon';
 
 // Prop interface for the main view
-interface OrganiserViewProps {
+interface StructureViewProps {
     initialElements: OrganiserElement[];
     currentUser: User;
 }
@@ -99,7 +100,7 @@ const TreeItem: React.FC<{
 
 
 // Main Structure View Component
-const OrganiserView: React.FC<OrganiserViewProps> = ({ initialElements, currentUser }) => {
+const StructureView: React.FC<StructureViewProps> = ({ initialElements, currentUser }) => {
     const [elements, setElements] = useState<OrganiserElement[]>(initialElements);
     const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
 
@@ -244,7 +245,8 @@ const OrganiserView: React.FC<OrganiserViewProps> = ({ initialElements, currentU
                                     <label className="text-sm font-medium text-gray-700">{key}</label>
                                     <input
                                         type="text"
-                                        value={value}
+                                        // Fix: Ensure value passed to input is a string.
+                                        value={String(value)}
                                         disabled={!isEditable}
                                         onChange={(e) => handlePropertyChange(key, e.target.value)}
                                         className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm focus:ring-violet-500 focus:border-violet-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
@@ -278,4 +280,4 @@ const OrganiserView: React.FC<OrganiserViewProps> = ({ initialElements, currentU
         </div>
     );
 };
-export default OrganiserView;
+export default StructureView;

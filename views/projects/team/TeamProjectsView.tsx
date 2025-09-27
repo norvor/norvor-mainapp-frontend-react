@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { User, Project, Task, TaskStatus } from '../../../types';
-import TaskKanban from '../../../components/pm/TaskKanban';
+import TaskKanban from '../../../components/projects/TaskKanban';
 
 // Sub-components
 
@@ -85,17 +85,17 @@ const ProjectBoardView: React.FC<{ projects: Project[]; tasks: Task[]; onTaskCli
 
 
 // Main Component
-interface TeamPmViewProps {
+interface TeamProjectsViewProps {
   currentUser: User;
   projects: Project[];
   tasks: Task[];
   allUsers: User[];
 }
 
-type TeamPmTab = 'my-tasks' | 'project-board';
+type TeamProjectsTab = 'my-tasks' | 'project-board';
 
-const TeamPmView: React.FC<TeamPmViewProps> = (props) => {
-  const [activeTab, setActiveTab] = useState<TeamPmTab>('my-tasks');
+const TeamProjectsView: React.FC<TeamProjectsViewProps> = (props) => {
+  const [activeTab, setActiveTab] = useState<TeamProjectsTab>('my-tasks');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
   const myTasks = useMemo(() => props.tasks.filter(t => t.assigneeId === props.currentUser.id), [props.tasks, props.currentUser.id]);
@@ -141,4 +141,4 @@ const TeamPmView: React.FC<TeamPmViewProps> = (props) => {
   );
 };
 
-export default TeamPmView;
+export default TeamProjectsView;

@@ -11,6 +11,7 @@ export interface User {
   role: UserRole;
   avatar: string;
   managerId?: number;
+  teamIds?: string[]; // Added to associate users with teams
   // HR Info
   title: string;
   department: string;
@@ -130,7 +131,7 @@ export interface TimeOffRequest {
     reason: string;
 }
 
-// --- Organiser Types ---
+// --- Organiser Types (replaces Structure) ---
 export enum OrganiserElementType {
     DEPARTMENT = 'Department',
     TEAM = 'Team',
@@ -141,15 +142,26 @@ export enum OrganiserElementType {
 
 export interface OrganiserElement {
     id: string;
+    parentId: string | null;
     type: OrganiserElementType;
     label: string;
-    x: number;
-    y: number;
     properties: { [key: string]: any };
 }
 
-export interface OrganiserConnection {
-    id: string;
-    from: string;
-    to: string;
+
+// --- Ticket / Request Types ---
+export enum TicketStatus {
+    OPEN = 'Open',
+    IN_PROGRESS = 'In Progress',
+    CLOSED = 'Closed',
+}
+
+export interface Ticket {
+    id: number;
+    title: string;
+    description: string;
+    status: TicketStatus;
+    submittedBy: number; // userId
+    teamId: string;
+    createdAt: string;
 }

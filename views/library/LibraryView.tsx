@@ -121,7 +121,7 @@ const NavItem: React.FC<{
     );
 };
 
-const DocsView: React.FC = () => {
+const LibraryView: React.FC = () => {
     const [docs, setDocs] = useState<Doc[]>(MOCK_DOCS);
     const [activeDocId, setActiveDocId] = useState<string>('1');
     const [isEditing, setIsEditing] = useState(false);
@@ -327,4 +327,4 @@ const DocsView: React.FC = () => {
     );
 };
 
-export default DocsView;
+export default LibraryView;

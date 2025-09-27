@@ -1,38 +1,64 @@
 
-import { User, UserRole, Contact, Deal, DealStage, Activity, ActivityType, Project, Task, ProjectStatus, TaskStatus, Team, TimeOffRequest, LeaveType, RequestStatus, OrganiserElement, OrganiserElementType, OrganiserConnection } from '../types';
+import { User, UserRole, Contact, Deal, DealStage, Activity, ActivityType, Project, Task, ProjectStatus, TaskStatus, Team, TimeOffRequest, LeaveType, RequestStatus, OrganiserElement, OrganiserElementType, Ticket, TicketStatus } from '../types';
+import { Module } from '../App';
+
 
 export const USERS: User[] = [
   { 
-    id: 1, name: 'Alex Johnson', role: UserRole.TEAM, avatar: 'https://picsum.photos/id/1005/200/200', managerId: 3,
+    id: 1, name: 'Alex Johnson', role: UserRole.TEAM, avatar: 'https://picsum.photos/id/1005/200/200', managerId: 3, teamIds: ['bd1'],
     title: 'Sales Representative', department: 'Sales', email: 'alex.j@norvor.com', phone: '555-1111', address: '123 Market St, San Francisco, CA', emergencyContact: 'Jane Doe 555-1112', 
     leaveBalance: { 'Vacation': 10, 'Sick Leave': 5 },
   },
   { 
-    id: 2, name: 'Brenda Smith', role: UserRole.TEAM, avatar: 'https://picsum.photos/id/1011/200/200', managerId: 3,
+    id: 2, name: 'Brenda Smith', role: UserRole.TEAM, avatar: 'https://picsum.photos/id/1011/200/200', managerId: 3, teamIds: ['bd1'],
     title: 'Sales Representative', department: 'Sales', email: 'brenda.s@norvor.com', phone: '555-2222', address: '456 Oak Ave, San Francisco, CA', emergencyContact: 'John Smith 555-2223', 
     leaveBalance: { 'Vacation': 12, 'Sick Leave': 8 },
   },
   { 
-    id: 3, name: 'Charles Brown', role: UserRole.MANAGEMENT, avatar: 'https://picsum.photos/id/1025/200/200',
+    id: 3, name: 'Charles Brown', role: UserRole.MANAGEMENT, avatar: 'https://picsum.photos/id/1025/200/200', teamIds: ['bd1'],
     title: 'Sales Manager', department: 'Sales', email: 'charles.b@norvor.com', phone: '555-3333', address: '789 Pine Ln, San Francisco, CA', emergencyContact: 'Mary Brown 555-3334', 
     leaveBalance: { 'Vacation': 15, 'Sick Leave': 10 },
   },
   { 
-    id: 4, name: 'Diana Green', role: UserRole.EXECUTIVE, avatar: 'https://picsum.photos/id/1027/200/200',
+    id: 4, name: 'Diana Green', role: UserRole.EXECUTIVE, avatar: 'https://picsum.photos/id/1027/200/200', teamIds: ['bd1', 'eng1', 'eng2'],
     title: 'CEO', department: 'Executive', email: 'diana.g@norvor.com', phone: '555-4444', address: '101 Hillside Dr, San Francisco, CA', emergencyContact: 'Peter Green 555-4445',
     leaveBalance: { 'Vacation': 20, 'Sick Leave': 10 },
   },
   { 
-    id: 5, name: 'Ethan Hunt', role: UserRole.TEAM, avatar: 'https://picsum.photos/id/10/200/200', managerId: 3,
-    title: 'Account Executive', department: 'Sales', email: 'ethan.h@norvor.com', phone: '555-5555', address: '210 River Rd, San Francisco, CA', emergencyContact: 'Sarah Hunt 555-5556',
+    id: 5, name: 'Ethan Hunt', role: UserRole.TEAM, avatar: 'https://picsum.photos/id/10/200/200', managerId: 3, teamIds: ['eng1'],
+    title: 'Software Engineer', department: 'Engineering', email: 'ethan.h@norvor.com', phone: '555-5555', address: '210 River Rd, San Francisco, CA', emergencyContact: 'Sarah Hunt 555-5556',
     leaveBalance: { 'Vacation': 8, 'Sick Leave': 3 },
+  },
+  { 
+    id: 6, name: 'Fiona Glenanne', role: UserRole.TEAM, avatar: 'https://picsum.photos/id/20/200/200', managerId: 3, teamIds: ['eng2'],
+    title: 'Software Engineer', department: 'Engineering', email: 'fiona.g@norvor.com', phone: '555-6666', address: '321 Mountain Ave, San Francisco, CA', emergencyContact: 'Michael Westen 555-6667',
+    leaveBalance: { 'Vacation': 10, 'Sick Leave': 6 },
+  },
+   { 
+    id: 7, name: 'George Mason', role: UserRole.MANAGEMENT, avatar: 'https://picsum.photos/id/30/200/200', teamIds: ['eng1', 'eng2'],
+    title: 'Engineering Manager', department: 'Engineering', email: 'george.m@norvor.com', phone: '555-7777', address: '456 Tech Way, San Francisco, CA', emergencyContact: 'Nina Myers 555-7778',
+    leaveBalance: { 'Vacation': 15, 'Sick Leave': 10 },
   },
 ];
 
 export const TEAMS: Team[] = [
     { id: 'bd1', name: 'BD Team 1' },
-    { id: 'dev1', name: 'Dev Team 1' },
-    { id: 'dev2', name: 'Dev Team 2' },
+    { id: 'eng1', name: 'Engineering Team 1' },
+    { id: 'eng2', name: 'Engineering Team 2' },
+];
+
+export const TEAM_CONFIGS: { id: string; name: string; modules: Module[] }[] = [
+    { id: 'bd1', name: 'BD Team 1', modules: ['hub', 'crm', 'pm', 'docs', 'datalabs', 'requests'] },
+    { id: 'eng1', name: 'Engineering Team 1', modules: ['hub', 'pm', 'docs', 'datalabs', 'requests'] },
+    { id: 'eng2', name: 'Engineering Team 2', modules: ['hub', 'pm', 'docs', 'datalabs', 'requests'] },
+];
+
+export const DEPARTMENT_CONFIGS: { id: string; name: string; modules: Module[] }[] = [
+    { id: 'hr', name: 'HR', modules: ['hr', 'docs'] },
+];
+
+export const CENTRAL_CONFIGS: { roles: UserRole[]; modules: Module[] }[] = [
+    { roles: [UserRole.EXECUTIVE], modules: ['organiser'] }
 ];
 
 export const CONTACTS: Contact[] = [
@@ -93,16 +119,23 @@ export const TIME_OFF_REQUESTS: TimeOffRequest[] = [
 ];
 
 export const ORGANISER_ELEMENTS: OrganiserElement[] = [
-    { id: 'd1', type: OrganiserElementType.DEPARTMENT, label: 'Sales', x: 100, y: 100, properties: { Head: 'Diana Green' } },
-    { id: 't1', type: OrganiserElementType.TEAM, label: 'US Sales Team', x: 100, y: 250, properties: { Manager: 'Charles Brown' } },
-    { id: 'r1', type: OrganiserElementType.ROLE, label: 'Sales Rep', x: 50, y: 400, properties: { Count: 3 } },
-    { id: 'r2', type: OrganiserElementType.ROLE, label: 'Sales Manager', x: 200, y: 400, properties: { Count: 1 } },
-    { id: 's1', type: OrganiserElementType.SOFTWARE, label: 'Salesforce CRM', x: 400, y: 100, properties: { Licenses: 10 } },
+    // Root departments
+    { id: 'd_sales', parentId: null, type: OrganiserElementType.DEPARTMENT, label: 'Sales', properties: { Head: 'Diana Green' } },
+    { id: 'd_eng', parentId: null, type: OrganiserElementType.DEPARTMENT, label: 'Engineering', properties: { Head: 'Diana Green' } },
+    { id: 'd_hr', parentId: null, type: OrganiserElementType.DEPARTMENT, label: 'HR', properties: { Head: 'Diana Green' } },
+    
+    // Teams under departments
+    { id: 't_bd1', parentId: 'd_sales', type: OrganiserElementType.TEAM, label: 'BD Team 1', properties: { Manager: 'Charles Brown' } },
+    { id: 't_eng1', parentId: 'd_eng', type: OrganiserElementType.TEAM, label: 'Engineering Team 1', properties: { Manager: 'George Mason' } },
+    { id: 't_eng2', parentId: 'd_eng', type: OrganiserElementType.TEAM, label: 'Engineering Team 2', properties: { Manager: 'George Mason' } },
+
+    // Software under teams/departments
+    { id: 's_crm', parentId: 't_bd1', type: OrganiserElementType.SOFTWARE, label: 'Salesforce CRM', properties: { Licenses: 10 } },
+    { id: 's_jira', parentId: 'd_eng', type: OrganiserElementType.SOFTWARE, label: 'Jira', properties: { Licenses: 20 } },
 ];
 
-export const ORGANISER_CONNECTIONS: OrganiserConnection[] = [
-    { id: 'c1', from: 'd1', to: 't1' },
-    { id: 'c2', from: 't1', to: 'r1' },
-    { id: 'c3', from: 't1', to: 'r2' },
-    { id: 'c4', from: 't1', to: 's1' },
+export const TICKETS: Ticket[] = [
+    { id: 701, title: 'Need access to new sales analytics dashboard', description: 'Hi team, can I get viewer permissions for the new Q3 sales dashboard? Thanks!', status: TicketStatus.OPEN, submittedBy: 1, teamId: 'eng1', createdAt: '2024-07-28' },
+    { id: 702, title: 'Bug Report: Contact form not submitting', description: 'The contact form on the landing page is throwing a 500 error when I try to submit it.', status: TicketStatus.IN_PROGRESS, submittedBy: 2, teamId: 'eng1', createdAt: '2024-07-27' },
+    { id: 703, title: 'New logo assets for marketing campaign', description: 'Could you please provide the new logo in SVG and PNG formats?', status: TicketStatus.CLOSED, submittedBy: 5, teamId: 'bd1', createdAt: '2024-07-25' },
 ];

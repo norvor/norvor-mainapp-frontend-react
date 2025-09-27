@@ -1,11 +1,11 @@
 
 import React from 'react';
 import { User, UserRole, Project, Task } from '../../types';
-import TeamPmView from './team/TeamPmView';
-import ManagementPmView from './management/ManagementPmView';
-import ExecutivePmView from './executive/ExecutivePmView';
+import TeamProjectsView from './team/TeamProjectsView';
+import ManagementProjectsView from './management/ManagementProjectsView';
+import ExecutiveProjectsView from './executive/ExecutiveProjectsView';
 
-interface PmViewProps {
+interface ProjectsViewProps {
   viewingUser: User;
   allUsers: User[];
   projects: Project[];
@@ -13,10 +13,10 @@ interface PmViewProps {
   teamMembers: User[];
 }
 
-const PmView: React.FC<PmViewProps> = (props) => {
+const ProjectsView: React.FC<ProjectsViewProps> = (props) => {
   switch (props.viewingUser.role) {
     case UserRole.TEAM:
-      return <TeamPmView 
+      return <TeamProjectsView 
                 currentUser={props.viewingUser}
                 projects={props.projects}
                 tasks={props.tasks}
@@ -26,14 +26,14 @@ const PmView: React.FC<PmViewProps> = (props) => {
         const managedProjects = props.projects.filter(p => 
             props.teamMembers.some(tm => tm.id === p.managerId) || p.managerId === props.viewingUser.id
         );
-      return <ManagementPmView 
+      return <ManagementProjectsView 
                 currentUser={props.viewingUser}
                 projects={managedProjects}
                 tasks={props.tasks}
                 teamMembers={props.teamMembers}
              />;
     case UserRole.EXECUTIVE:
-      return <ExecutivePmView
+      return <ExecutiveProjectsView
                 allUsers={props.allUsers}
                 projects={props.projects}
                 tasks={props.tasks}
@@ -43,4 +43,4 @@ const PmView: React.FC<PmViewProps> = (props) => {
   }
 };
 
-export default PmView;
+export default ProjectsView;
