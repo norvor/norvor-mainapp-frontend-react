@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { UserRole, User } from './types';
 import { USERS, CONTACTS, DEALS, ACTIVITIES, PROJECTS, TASKS, TIME_OFF_REQUESTS, ORGANISER_ELEMENTS, TEAM_CONFIGS, TICKETS, DEPARTMENT_CONFIGS } from './data/mockData';
@@ -13,9 +14,11 @@ import TeamHubView from './views/teamhub/TeamHubView';
 import DocsView from './views/docs/DocsView';
 import RequestsView from './views/requests/RequestsView';
 import { ThemeProvider } from './contexts/ThemeContext';
+import DashboardView from './views/dashboard/DashboardView';
+import SocialView from './views/social/SocialView';
 
 
-export type Module = 'hub' | 'control-center' | 'crm' | 'pm' | 'datalabs' | 'hr' | 'organiser' | 'docs' | 'requests';
+export type Module = 'hub' | 'control-center' | 'crm' | 'pm' | 'datalabs' | 'hr' | 'organiser' | 'docs' | 'requests' | 'dashboard' | 'social';
 
 export interface ActiveView {
   type: 'team' | 'department' | 'global';
@@ -115,6 +118,10 @@ const App: React.FC = () => {
     switch (activeView.module) {
       case 'hub':
         return <TeamHubView teamId={activeView.id} />;
+      case 'dashboard':
+        return <DashboardView />;
+      case 'social':
+        return <SocialView />;
       case 'crm':
         return <CrmView 
           viewingUser={contextualUser}

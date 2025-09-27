@@ -16,9 +16,14 @@ import DocsIcon from '../icons/DocsIcon';
 import XIcon from '../icons/XIcon';
 import RequestsIcon from '../icons/RequestsIcon';
 import OrganiserIcon from '../icons/OrganiserIcon';
+import DashboardIcon from '../icons/DashboardIcon';
+import SocialIcon from '../icons/SocialIcon';
 
 const MODULE_ICONS: Record<Module, React.FC<{className?: string}>> = {
     hub: TeamIcon,
+    'control-center': TeamIcon,
+    dashboard: DashboardIcon,
+    social: SocialIcon,
     crm: CrmIcon,
     pm: PmIcon,
     hr: HrIcon,
@@ -26,7 +31,6 @@ const MODULE_ICONS: Record<Module, React.FC<{className?: string}>> = {
     datalabs: DataLabsIcon,
     requests: RequestsIcon,
     organiser: OrganiserIcon,
-    'control-center': TeamIcon, 
 };
 
 const MODULE_LABELS: Record<string, string> = {
@@ -38,6 +42,8 @@ const MODULE_LABELS: Record<string, string> = {
   datalabs: 'Data Labs',
   requests: 'Requests',
   organiser: 'Structure',
+  dashboard: 'Dashboard',
+  social: 'Social',
 };
 
 const NavButton: React.FC<{

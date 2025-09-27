@@ -58,6 +58,7 @@ export const DEPARTMENT_CONFIGS: { id: string; name: string; modules: Module[] }
 ];
 
 export const CENTRAL_CONFIGS: { roles: UserRole[]; modules: Module[] }[] = [
+    { roles: [UserRole.TEAM, UserRole.MANAGEMENT, UserRole.EXECUTIVE], modules: ['dashboard', 'social'] },
     { roles: [UserRole.EXECUTIVE], modules: ['organiser'] }
 ];
 
