@@ -1,5 +1,12 @@
-import React, { useState, useMemo } from 'react';
+
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { useEditor, EditorContent, Editor } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
 import ChevronDownIcon from '../../components/icons/ChevronDownIcon';
+import ChevronLeftIcon from '../../components/icons/ChevronLeftIcon';
+import ChevronRightIcon from '../../components/icons/ChevronRightIcon';
+import HamburgerIcon from '../../components/icons/HamburgerIcon';
+import XIcon from '../../components/icons/XIcon';
 
 // --- TYPES ---
 interface Doc {
@@ -7,99 +14,76 @@ interface Doc {
     title: string;
     icon: string; // emoji
     parentId: string | null;
-    content: React.ReactNode;
+    content: string; // Now HTML content
 }
 
 interface DocNode extends Doc {
     children: DocNode[];
 }
 
-// --- MOCK DATA ---
+// --- MOCK DATA (Content is now HTML) ---
 const MOCK_DOCS: Doc[] = [
     { 
         id: '1', title: 'Onboarding Guide', icon: '🚀', parentId: null, 
-        content: (
-            <>
-                <h2>Welcome to Norvor!</h2>
-                <p>This guide will walk you through everything you need to know to get started. We're excited to have you on the team.</p>
-                <h3>Our Mission</h3>
-                <p>Our mission is to build the most intuitive and powerful CRM on the market, empowering teams to achieve more.</p>
-                <h3>Key Resources</h3>
-                <ul>
-                    <li>Company Policies (see the "Company Policies" section)</li>
-                    <li>Engineering Style Guide (for developers)</li>
-                    <li>Brand Assets</li>
-                </ul>
-            </>
-        ) 
+        content: `<h2>Welcome to Norvor!</h2><p>This guide will walk you through everything you need to know to get started. We're excited to have you on the team.</p><h3>Our Mission</h3><p>Our mission is to build the most intuitive and powerful CRM on the market, empowering teams to achieve more.</p><h3>Key Resources</h3><ul><li>Company Policies (see the "Company Policies" section)</li><li>Engineering Style Guide (for developers)</li><li>Brand Assets</li></ul>`
     },
     { 
         id: '2', title: 'First Week Checklist', icon: '✅', parentId: '1', 
-        content: (
-            <>
-                <h2>Your First Week Checklist</h2>
-                <p>Use this list to track your progress during your first week.</p>
-                <ul className="list-none space-y-2">
-                    <li><label><input type="checkbox" className="mr-2"/> Set up your development environment.</label></li>
-                    <li><label><input type="checkbox" className="mr-2"/> Have introductory meetings with your direct team members.</label></li>
-                    <li><label><input type="checkbox" className="mr-2"/> Get access to all necessary software (Slack, Figma, GitHub).</label></li>
-                    <li><label><input type="checkbox" className="mr-2"/> Review the company-wide onboarding guide.</label></li>
-                </ul>
-            </>
-        ) 
+        content: `<h2>Your First Week Checklist</h2><p>Use this list to track your progress during your first week.</p><ul><li>Set up your development environment.</li><li>Have introductory meetings with your direct team members.</li><li>Get access to all necessary software (Slack, Figma, GitHub).</li><li>Review the company-wide onboarding guide.</li></ul>`
     },
     { 
         id: '3', title: 'Company Policies', icon: '⚖️', parentId: null, 
-        content: (
-            <>
-                <h2>Company Policies Overview</h2>
-                <p>This section contains important information about company policies. Please review them carefully.</p>
-            </>
-        ) 
+        content: `<h2>Company Policies Overview</h2><p>This section contains important information about company policies. Please review them carefully.</p>`
     },
     { 
         id: '4', title: 'Remote Work Policy', icon: '🏠', parentId: '3', 
-        content: (
-            <>
-                <h2>Remote Work Policy</h2>
-                <p>We are a remote-first company. This means you can work from anywhere with a reliable internet connection. We expect you to be available during core collaboration hours (10am - 4pm in your local timezone).</p>
-            </>
-        ) 
+        content: `<h2>Remote Work Policy</h2><p>We are a remote-first company. This means you can work from anywhere with a reliable internet connection. We expect you to be available during core collaboration hours (10am - 4pm in your local timezone).</p>`
     },
     { 
         id: '5', title: 'Time Off Policy', icon: '✈️', parentId: '3', 
-        content: (
-            <>
-                <h2>Time Off Policy</h2>
-                <p>We offer a flexible, unlimited PTO policy. We trust you to take the time you need to rest and recharge, while still ensuring your work is completed. Please provide at least 2 weeks notice for any vacation longer than 3 days.</p>
-            </>
-        ) 
+        content: `<h2>Time Off Policy</h2><p>We offer a flexible, unlimited PTO policy. We trust you to take the time you need to rest and recharge, while still ensuring your work is completed. Please provide at least 2 weeks notice for any vacation longer than 3 days.</p>`
     },
     { 
         id: '6', title: 'Engineering', icon: '⚙️', parentId: null, 
-        content: (
-            <>
-                <h2>Engineering Documentation</h2>
-                <p>A collection of technical documentation, style guides, and best practices for the engineering team.</p>
-            </>
-        ) 
+        content: `<h2>Engineering Documentation</h2><p>A collection of technical documentation, style guides, and best practices for the engineering team.</p>`
     },
     { 
         id: '7', title: 'Style Guide', icon: '🎨', parentId: '6', 
-        content: (
-            <>
-                <h2>Frontend Style Guide</h2>
-                <p>Our frontend stack is built on React, TypeScript, and TailwindCSS.</p>
-                <h3>Component Naming</h3>
-                <p>Components should be named using PascalCase (e.g., `MyComponent.tsx`).</p>
-                <h3>State Management</h3>
-                <p>For local state, use `useState`. For global state, we use React Context for simplicity, but may adopt a more robust library if needed.</p>
-            </>
-        ) 
+        content: `<h2>Frontend Style Guide</h2><p>Our frontend stack is built on React, TypeScript, and TailwindCSS.</p><h3>Component Naming</h3><p>Components should be named using PascalCase (e.g., <code>MyComponent.tsx</code>).</p><h3>State Management</h3><p>For local state, use <code>useState</code>. For global state, we use React Context for simplicity, but may adopt a more robust library if needed.</p>`
     },
 ];
 
 // --- COMPONENTS ---
+
+const MenuBar: React.FC<{ editor: Editor | null }> = ({ editor }) => {
+  if (!editor) {
+    return null;
+  }
+
+  return (
+    <div className="flex items-center space-x-1 bg-white border border-gray-200 rounded-md p-1 sticky top-4 z-10 shadow-sm">
+      <button onClick={() => editor.chain().focus().toggleBold().run()} disabled={!editor.can().chain().focus().toggleBold().run()} className={`p-2 rounded ${editor.isActive('bold') ? 'is-active' : ''}`}>
+        <strong>B</strong>
+      </button>
+      <button onClick={() => editor.chain().focus().toggleItalic().run()} disabled={!editor.can().chain().focus().toggleItalic().run()} className={`p-2 rounded ${editor.isActive('italic') ? 'is-active' : ''}`}>
+        <em>I</em>
+      </button>
+      <button onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} className={`p-2 rounded ${editor.isActive('heading', { level: 1 }) ? 'is-active' : ''}`}>
+        H1
+      </button>
+      <button onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} className={`p-2 rounded ${editor.isActive('heading', { level: 2 }) ? 'is-active' : ''}`}>
+        H2
+      </button>
+      <button onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} className={`p-2 rounded ${editor.isActive('heading', { level: 3 }) ? 'is-active' : ''}`}>
+        H3
+      </button>
+      <button onClick={() => editor.chain().focus().toggleBulletList().run()} className={`p-2 rounded ${editor.isActive('bulletList') ? 'is-active' : ''}`}>
+        UL
+      </button>
+    </div>
+  );
+};
+
 
 const NavItem: React.FC<{ 
     node: DocNode; 
@@ -139,9 +123,71 @@ const NavItem: React.FC<{
 };
 
 const DocsView: React.FC = () => {
-    const [docs] = useState<Doc[]>(MOCK_DOCS);
+    const [docs, setDocs] = useState<Doc[]>(MOCK_DOCS);
     const [activeDocId, setActiveDocId] = useState<string>('1');
+    const [isEditing, setIsEditing] = useState(false);
+    const [isDocsSidebarOpen, setIsDocsSidebarOpen] = useState(window.innerWidth >= 1024);
+    
+    const activeDoc = useMemo(() => docs.find(d => d.id === activeDocId), [docs, activeDocId]);
 
+    const handleResize = useCallback(() => {
+        if (window.innerWidth < 1024) {
+            setIsDocsSidebarOpen(false);
+        } else {
+            setIsDocsSidebarOpen(true);
+        }
+    }, []);
+
+    useEffect(() => {
+        window.addEventListener('resize', handleResize);
+        handleResize(); // Initial check on load
+        return () => window.removeEventListener('resize', handleResize);
+    }, [handleResize]);
+    
+    const handleSelectDoc = (id: string) => {
+        setActiveDocId(id);
+        if (window.innerWidth < 1024) {
+            setIsDocsSidebarOpen(false);
+        }
+    };
+
+    const editor = useEditor({
+        extensions: [StarterKit],
+        content: activeDoc?.content || '',
+        editable: isEditing,
+    });
+    
+    useEffect(() => {
+        if (editor) {
+            editor.setEditable(isEditing);
+        }
+    }, [isEditing, editor]);
+
+    useEffect(() => {
+        if (editor && activeDoc) {
+            if (editor.getHTML() !== activeDoc.content) {
+                editor.commands.setContent(activeDoc.content);
+            }
+        }
+        setIsEditing(false);
+    }, [activeDocId, editor, activeDoc]);
+
+    const handleEdit = () => setIsEditing(true);
+
+    const handleCancel = () => {
+        if (editor && activeDoc) {
+            editor.commands.setContent(activeDoc.content);
+        }
+        setIsEditing(false);
+    };
+
+    const handleSave = () => {
+        if (activeDoc && editor) {
+            setDocs(docs.map(doc => doc.id === activeDocId ? { ...doc, content: editor.getHTML() } : doc));
+            setIsEditing(false);
+        }
+    };
+    
     const docTree = useMemo(() => {
         const nodes: Record<string, DocNode> = {};
         docs.forEach(doc => {
@@ -159,59 +205,126 @@ const DocsView: React.FC = () => {
         return tree;
     }, [docs]);
 
-    const activeDoc = useMemo(() => docs.find(d => d.id === activeDocId), [docs, activeDocId]);
-
     return (
-        <div className="flex h-full bg-white rounded-lg shadow-inner overflow-hidden border border-gray-200/50">
+        <div className="relative flex h-full bg-white rounded-lg shadow-inner overflow-hidden border border-gray-200/50">
+            {/* Mobile-only backdrop for contained sidebar */}
+            {isDocsSidebarOpen && (
+                <div 
+                    onClick={() => setIsDocsSidebarOpen(false)}
+                    className="absolute inset-0 z-40 bg-gray-50 lg:hidden"
+                    aria-hidden="true"
+                ></div>
+            )}
+            
             {/* Left Nav */}
-            <nav className="w-72 bg-gray-50/50 border-r border-gray-200 p-3 flex flex-col space-y-1">
-                <h2 className="px-2 py-1 text-sm font-semibold text-gray-700">Workspace</h2>
-                {docTree.map(rootNode => (
-                    <NavItem key={rootNode.id} node={rootNode} level={0} onSelect={setActiveDocId} activeDocId={activeDocId} />
-                ))}
+            <nav className={`
+                absolute lg:relative inset-y-0 left-0 z-50 lg:z-auto
+                bg-gray-50 border-r border-gray-200
+                flex flex-col
+                transition-all duration-300 ease-in-out
+                w-72
+                ${isDocsSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+                lg:translate-x-0
+                ${isDocsSidebarOpen ? 'lg:w-72 lg:p-3' : 'lg:w-0 lg:p-0'}
+                overflow-hidden
+            `}>
+                <div className="flex justify-between items-center p-2 mb-2 shrink-0">
+                    <h2 className="text-sm font-semibold text-gray-700 px-2">Workspace</h2>
+                    <div>
+                         <button 
+                            onClick={() => setIsDocsSidebarOpen(false)} 
+                            className="p-1 text-gray-500 hover:text-gray-800 hidden lg:block rounded-md hover:bg-gray-200"
+                            aria-label="Collapse sidebar"
+                        >
+                            <ChevronLeftIcon className="w-5 h-5" />
+                        </button>
+                        <button 
+                            onClick={() => setIsDocsSidebarOpen(false)} 
+                            className="p-1 text-gray-500 hover:text-gray-800 lg:hidden"
+                            aria-label="Close sidebar"
+                        >
+                            <XIcon className="w-6 h-6" />
+                        </button>
+                    </div>
+                </div>
+
+                <div className="overflow-y-auto space-y-1">
+                    {docTree.map(rootNode => (
+                        <NavItem key={rootNode.id} node={rootNode} level={0} onSelect={handleSelectDoc} activeDocId={activeDocId} />
+                    ))}
+                </div>
             </nav>
 
             {/* Main Content */}
-            <main className="flex-1 p-8 lg:p-16 overflow-y-auto">
+            <main className="flex-1 p-8 lg:p-12 overflow-y-auto flex flex-col relative transition-all duration-300">
                 {activeDoc ? (
-                    <article>
-                        <div className="flex items-center space-x-3 text-4xl font-bold mb-10 text-gray-800">
-                           <span className="text-5xl -mt-2">{activeDoc.icon}</span>
-                           <h1>{activeDoc.title}</h1>
-                        </div>
-                        <div className="prose-custom space-y-4">
-                            {activeDoc.content}
-                        </div>
-                    </article>
+                    <>
+                        <header className="flex justify-between items-center mb-8">
+                           <div className="flex items-center space-x-3 text-2xl sm:text-4xl font-bold text-gray-800">
+                               {!isDocsSidebarOpen && (
+                                   <button 
+                                       onClick={() => setIsDocsSidebarOpen(true)} 
+                                       className="p-1 text-gray-500 hover:text-gray-800 mr-2 -ml-2"
+                                       aria-label="Open sidebar"
+                                   >
+                                       <HamburgerIcon className="w-6 h-6" />
+                                   </button>
+                               )}
+                               <span className="text-3xl sm:text-5xl -mt-2">{activeDoc.icon}</span>
+                               <h1>{activeDoc.title}</h1>
+                            </div>
+                            <div className="flex space-x-2">
+                                {isEditing ? (
+                                    <>
+                                        <button onClick={handleSave} className="px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-md hover:bg-violet-700">Save</button>
+                                        <button onClick={handleCancel} className="px-4 py-2 bg-gray-200 text-gray-800 text-sm font-medium rounded-md hover:bg-gray-300">Cancel</button>
+                                    </>
+                                ) : (
+                                    <button onClick={handleEdit} className="px-4 py-2 bg-gray-200 text-gray-800 text-sm font-medium rounded-md hover:bg-gray-300">Edit</button>
+                                )}
+                            </div>
+                        </header>
+                         {isEditing && <MenuBar editor={editor} />}
+                        <article className="flex-1 mt-4">
+                           <EditorContent editor={editor} />
+                        </article>
+                    </>
                 ) : (
-                    <div className="text-center text-gray-500">
+                    <div className="text-center text-gray-500 m-auto">
                         <p>Select a document to view its content.</p>
                     </div>
                 )}
             </main>
             <style>{`
-                .prose-custom h2 {
-                    font-size: 1.875rem;
-                    font-weight: 700;
-                    margin-top: 2.5rem;
-                    margin-bottom: 1rem;
-                    padding-bottom: 0.5rem;
-                    border-bottom: 1px solid #e5e7eb;
+                .ProseMirror {
+                    outline: none;
                 }
-                .prose-custom h3 {
-                    font-size: 1.5rem;
+                .ProseMirror-focused {
+                    outline: none;
+                }
+                .ProseMirror > * + * {
+                    margin-top: 0.75em;
+                }
+                .ProseMirror ul, .ProseMirror ol {
+                    padding: 0 1rem;
+                }
+                .ProseMirror h1, .ProseMirror h2, .ProseMirror h3 {
+                    line-height: 1.1;
                     font-weight: 600;
-                    margin-top: 2rem;
-                    margin-bottom: 0.75rem;
                 }
-                .prose-custom p, .prose-custom li {
-                    font-size: 1.125rem;
-                    line-height: 1.75;
-                    color: #374151;
+                .ProseMirror h1 { font-size: 2em; }
+                .ProseMirror h2 { font-size: 1.5em; }
+                .ProseMirror h3 { font-size: 1.25em; }
+                .ProseMirror code {
+                    background-color: rgba(97, 97, 97, 0.1);
+                    color: #616161;
+                    font-size: 0.9rem;
+                    padding: 0.1rem 0.3rem;
+                    border-radius: 0.25rem;
                 }
-                .prose-custom ul {
-                    list-style-type: disc;
-                    padding-left: 1.5rem;
+                
+                button.is-active {
+                    background-color: #e0e0e0;
                 }
             `}</style>
         </div>

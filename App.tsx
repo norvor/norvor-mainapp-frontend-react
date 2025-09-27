@@ -1,5 +1,6 @@
 
-import React, { useState, useMemo } from 'react';
+
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { UserRole, User } from './types';
 import { USERS, CONTACTS, DEALS, ACTIVITIES, PROJECTS, TASKS, TIME_OFF_REQUESTS, ORGANISER_ELEMENTS, ORGANISER_CONNECTIONS } from './data/mockData';
 import Sidebar from './components/layout/Sidebar';
@@ -30,6 +31,26 @@ const App: React.FC = () => {
     role: UserRole.EXECUTIVE,
     label: 'Control Center'
   });
+  
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1024);
+
+  const handleResize = useCallback(() => {
+    if (window.innerWidth < 1024) {
+      setIsSidebarOpen(false);
+    } else {
+      setIsSidebarOpen(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener('resize', handleResize);
+    handleResize(); // Initial check on load
+    return () => window.removeEventListener('resize', handleResize);
+  }, [handleResize]);
+
+  const toggleSidebar = () => {
+    setIsSidebarOpen(prev => !prev);
+  };
 
   const viewingUser = useMemo(() => {
     return USERS.find(u => u.role === activeView.role) || USERS[0];
@@ -62,6 +83,9 @@ const App: React.FC = () => {
 
   const handleNavigate = (newView: ActiveView) => {
     setActiveView(newView);
+    if (window.innerWidth < 1024) {
+      setIsSidebarOpen(false);
+    }
   }
 
   const renderContent = () => {
@@ -117,9 +141,21 @@ const App: React.FC = () => {
         currentUser={currentUser}
         activeView={activeView}
         onNavigate={handleNavigate}
+        isOpen={isSidebarOpen}
+        onToggleSidebar={toggleSidebar}
       />
+
+      {/* Mobile-only backdrop */}
+      {isSidebarOpen && (
+        <div 
+          onClick={toggleSidebar}
+          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+          aria-hidden="true"
+        ></div>
+      )}
+
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header user={currentUser} />
+        <Header user={currentUser} onToggleSidebar={toggleSidebar} />
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6 lg:p-8">
           {renderContent()}
         </main>

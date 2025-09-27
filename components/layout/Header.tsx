@@ -1,18 +1,28 @@
+
 import React from 'react';
-import { User, UserRole } from '../../types';
+import { User } from '../../types';
 import SearchIcon from '../icons/SearchIcon';
 import BellIcon from '../icons/BellIcon';
 import ChevronDownIcon from '../icons/ChevronDownIcon';
+import HamburgerIcon from '../icons/HamburgerIcon';
 
 interface HeaderProps {
   user: User;
+  onToggleSidebar: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ user }) => {
+const Header: React.FC<HeaderProps> = ({ user, onToggleSidebar }) => {
   return (
-    <header className="flex items-center justify-between h-16 bg-white border-b border-gray-200 px-6">
-      {/* Search Bar */}
+    <header className="flex items-center justify-between h-16 bg-white border-b border-gray-200 px-6 shrink-0">
+      {/* Search Bar & Toggle */}
       <div className="flex items-center">
+        <button 
+          onClick={onToggleSidebar} 
+          className="text-gray-500 hover:text-gray-700 -ml-2 mr-2 p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-500 lg:mr-4"
+          aria-label="Toggle sidebar"
+        >
+          <HamburgerIcon className="h-6 w-6" />
+        </button>
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <SearchIcon className="h-5 w-5 text-gray-400" />
