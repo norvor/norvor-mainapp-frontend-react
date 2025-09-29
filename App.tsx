@@ -50,7 +50,8 @@ const App: React.FC = () => {
   const fetchData = useCallback(async () => {
     const token = localStorage.getItem('authToken');
     if (!token) {
-      window.location.href = 'http://localhost:3000/login'; 
+      window.location.href = 'https://www.norvorx.com/login';
+      //window.location.href = 'http://localhost:3000/login'; 
       return;
     }
 
