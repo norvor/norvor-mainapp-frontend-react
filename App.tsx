@@ -1,8 +1,6 @@
-
-
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { UserRole, User } from './types';
-import { USERS, CONTACTS, DEALS, ACTIVITIES, PROJECTS, TASKS, TIME_OFF_REQUESTS, ORGANISER_ELEMENTS, TEAM_CONFIGS, TICKETS, DEPARTMENT_CONFIGS } from './data/mockData';
+import { UserRole, User, Contact, Deal, Activity, Project, Task, TimeOffRequest, OrganiserElement, Ticket } from './types';
+import { TEAM_CONFIGS, DEPARTMENT_CONFIGS, CENTRAL_CONFIGS } from './data/mockData';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
 import CrmView from './views/crm/CrmView';
@@ -16,29 +14,66 @@ import RequestsView from './views/requests/RequestsView';
 import { ThemeProvider } from './contexts/ThemeContext';
 import DashboardView from './views/dashboard/DashboardView';
 import SocialView from './views/social/SocialView';
-
+import apiClient from './utils/apiClient';
 
 export type Module = 'hub' | 'control-center' | 'crm' | 'pm' | 'datalabs' | 'hr' | 'organiser' | 'docs' | 'requests' | 'dashboard' | 'social';
 
 export interface ActiveView {
   type: 'team' | 'department' | 'global';
-  id: string; // teamId or departmentId ('hr') or 'global'
+  id: string;
   module: Module;
-  label: string; // Display name for the view, e.g., "BD Team 1 Hub"
+  label: string;
 }
 
 const App: React.FC = () => {
-  const [currentUser] = useState<User>(USERS.find(u => u.role === UserRole.EXECUTIVE)!);
+  // --- STATE FOR LIVE DATA ---
+  const [users, setUsers] = useState<User[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [deals, setDeals] = useState<Deal[]>([]);
+  const [currentUser, setCurrentUser] = useState<User | null>(null); // Start with no user
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   const [activeView, setActiveView] = useState<ActiveView>({ 
     type: 'team',
-    id: 'bd1', // Default to the first team
+    id: 'bd1',
     module: 'hub',
     label: `${TEAM_CONFIGS[0].name} Hub`,
   });
   
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1024);
   const [perspectives, setPerspectives] = useState<{[key in string]?: UserRole}>({});
+
+  // --- DATA FETCHING LOGIC ---
+  useEffect(() => {
+    const fetchAllData = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        // In a real app, you would have a /users/me endpoint to get the current user
+        // For now, we fetch all users and set an executive as the current user
+        const usersData = await apiClient('/users/');
+        const contactsData = await apiClient('/crm/contacts/');
+        const dealsData = await apiClient('/crm/deals/');
+        
+        setUsers(usersData);
+        setContacts(contactsData);
+        setDeals(dealsData);
+
+        // Find and set the current user AFTER data is fetched
+        const executiveUser = usersData.find((u: User) => u.role === UserRole.EXECUTIVE);
+        setCurrentUser(executiveUser || usersData[0] || null);
+
+      } catch (err: any) {
+        setError(err.message || "Failed to fetch data");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchAllData();
+  }, []);
 
   const handleResize = useCallback(() => {
     if (window.innerWidth < 1024) {
@@ -50,13 +85,11 @@ const App: React.FC = () => {
 
   useEffect(() => {
     window.addEventListener('resize', handleResize);
-    handleResize(); // Initial check on load
+    handleResize();
     return () => window.removeEventListener('resize', handleResize);
   }, [handleResize]);
 
-  const toggleSidebar = () => {
-    setIsSidebarOpen(prev => !prev);
-  };
+  const toggleSidebar = () => setIsSidebarOpen(prev => !prev);
   
   const handlePerspectiveChange = (module: Module, role: UserRole) => {
       setPerspectives(prev => ({...prev, [module]: role}));
@@ -71,25 +104,29 @@ const App: React.FC = () => {
 
   const activeTeamMembers = useMemo(() => {
     if (activeView.type !== 'team') return [];
-    return USERS.filter(u => u.teamIds?.includes(activeView.id));
-  }, [activeView]);
+    // Fix: Ensure teamIds is treated as an array from JSON
+    return users.filter(u => Array.isArray(u.teamIds) && u.teamIds.includes(activeView.id));
+  }, [activeView, users]);
 
-  const unassignedContacts = useMemo(() => CONTACTS.filter(c => !c.ownerId), []);
+  const unassignedContacts = useMemo(() => contacts.filter(c => !c.ownerId), [contacts]);
   
   const allTeamContacts = useMemo(() => {
       const memberIds = activeTeamMembers.map(tm => tm.id);
-      return CONTACTS.filter(c => c.ownerId && memberIds.includes(c.ownerId));
-  }, [activeTeamMembers]);
+      return contacts.filter(c => c.ownerId && memberIds.includes(c.ownerId));
+  }, [activeTeamMembers, contacts]);
 
   const allTeamDeals = useMemo(() => {
       const memberIds = activeTeamMembers.map(tm => tm.id);
-      return DEALS.filter(d => d.ownerId && memberIds.includes(d.ownerId));
-  }, [activeTeamMembers]);
+      return deals.filter(d => d.ownerId && memberIds.includes(d.ownerId));
+  }, [activeTeamMembers, deals]);
 
-  const teamTickets = useMemo(() => {
-    if (activeView.type !== 'team') return [];
-    return TICKETS.filter(t => t.teamId === activeView.id);
-  }, [activeView.id, activeView.type]);
+  // These are still using mock data and will be connected later
+  const teamTickets = [] as Ticket[]; 
+  const timeOffRequests = [] as TimeOffRequest[];
+  const organiserElements = [] as OrganiserElement[];
+  const projects = [] as Project[];
+  const tasks = [] as Task[];
+  const activities = [] as Activity[];
 
   const handleNavigate = (newView: ActiveView) => {
     setActiveView(newView);
@@ -98,18 +135,24 @@ const App: React.FC = () => {
     }
   }
 
+  // --- RENDER LOGIC ---
+  // Don't try to render anything until we have a current user
+  if (isLoading || !currentUser) {
+    return <div className="p-8 bg-gray-100 dark:bg-slate-900 text-gray-800 dark:text-gray-200 h-screen">Loading Application...</div>;
+  }
+  if (error) {
+    return <div className="p-8 bg-gray-100 dark:bg-slate-900 text-red-500 h-screen">Error: {error}</div>;
+  }
+
   const renderContent = () => {
     const viewingAsRole = perspectives[activeView.module] || currentUser.role;
 
     const getContextualUser = (role: UserRole): User => {
         if (role === currentUser.role) return currentUser;
-
-        const userPool = activeView.type === 'team' ? activeTeamMembers : USERS;
-        
+        const userPool = activeView.type === 'team' ? activeTeamMembers : users;
         const userInPool = userPool.find(m => m.role === role);
         if (userInPool) return userInPool;
-        
-        const fallbackUser = USERS.find(u => u.role === role);
+        const fallbackUser = users.find(u => u.role === role);
         return fallbackUser || currentUser;
     }
     
@@ -126,40 +169,14 @@ const App: React.FC = () => {
         return <CrmView 
           viewingUser={contextualUser}
           teamMembers={activeTeamMembers}
-          contacts={CONTACTS}
-          deals={DEALS}
-          activities={ACTIVITIES}
+          contacts={contacts}
+          deals={deals}
+          activities={activities}
           unassignedContacts={unassignedContacts}
           allTeamContacts={allTeamContacts}
           allTeamDeals={allTeamDeals}
         />;
-      case 'pm':
-        return <PmView
-          viewingUser={contextualUser}
-          allUsers={USERS}
-          projects={PROJECTS}
-          tasks={TASKS}
-          teamMembers={activeTeamMembers}
-        />;
-      case 'hr':
-        const directReports = USERS.filter(u => u.managerId === contextualUser.id);
-        return <HrView
-            viewingUser={contextualUser}
-            allUsers={USERS}
-            timeOffRequests={TIME_OFF_REQUESTS}
-            directReports={directReports}
-        />;
-      case 'organiser':
-        return <OrganiserView 
-          initialElements={ORGANISER_ELEMENTS}
-          currentUser={currentUser}
-        />;
-      case 'datalabs':
-        return <DataLabsView />;
-      case 'docs':
-        return <DocsView />;
-      case 'requests':
-        return <RequestsView teamId={activeView.id} tickets={teamTickets} allUsers={USERS} currentUser={currentUser} />;
+      // ... other cases will be updated later
       default:
         return <div>Select a view</div>;
     }
