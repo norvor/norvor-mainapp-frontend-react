@@ -1,8 +1,11 @@
-
-import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { useEditor, EditorContent, Editor, BubbleMenu, FloatingMenu } from '@tiptap/react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { useEditor, EditorContent, BubbleMenu, FloatingMenu } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
+import { useDispatch, useSelector } from 'react-redux';
+import { createDoc, deleteDoc, updateDoc } from '../../store/slices/docSlice';
+import { RootState } from '../../store/store';
+import { User } from '../../types';
 
 import ChevronDownIcon from '../../components/icons/ChevronDownIcon';
 import HamburgerIcon from '../../components/icons/HamburgerIcon';
@@ -20,43 +23,30 @@ import TrashIcon from '../../components/icons/TrashIcon';
 interface Doc {
     id: string;
     title: string;
-    icon: string; // emoji
+    icon: string;
     parentId: string | null;
-    content: string; 
+    content: string;
 }
-
 interface DocNode extends Doc {
     children: DocNode[];
 }
-
-// --- MOCK DATA ---
-const MOCK_DOCS: Doc[] = [
-    { 
-        id: '1', title: 'Onboarding Guide', icon: '🚀', parentId: null, 
-        content: `<h1>Welcome to Your Library!</h1><p>This is a fully-featured, Notion-style editor. Here are some things you can do:</p><ul><li><p>Just start typing! It's that easy.</p></li><li><p>Select any text to see a floating menu for <strong>bold</strong>, <em>italic</em>, and other formatting.</p></li><li><p>On a new line, type <code>/</code> to open a command menu and easily add new elements like headings, lists, or dividers.</p></li></ul><blockquote><p>This is a blockquote. A great way to highlight important text.</p></blockquote><p>Try creating a new page using the button in the sidebar!</p>`
-    },
-    { 
-        id: '2', title: 'First Week Checklist', icon: '✅', parentId: '1', 
-        content: `<h2>Your First Week Checklist</h2><p>Use this list to track your progress during your first week.</p><ul><li>Set up your development environment.</li><li>Have introductory meetings with your direct team members.</li><li>Get access to all necessary software (Slack, Figma, GitHub).</li><li>Review the company-wide onboarding guide.</li></ul>`
-    },
-    { 
-        id: '3', title: 'Company Policies', icon: '⚖️', parentId: null, 
-        content: `<h2>Company Policies Overview</h2><p>This section contains important information about company policies. Please review them carefully.</p>`
-    },
-];
-
-// --- COMPONENTS ---
+interface DocsViewProps {
+    currentUser: User;
+}
 
 const NavItem: React.FC<{ 
     node: DocNode; 
     level: number;
     onSelect: (id: string) => void;
-    onDelete: (id: string) => void;
+    onDelete: (id: string) => Promise<void>;
     activeDocId: string | null;
 }> = ({ node, level, onSelect, onDelete, activeDocId }) => {
     const [isOpen, setIsOpen] = useState(true);
     const hasChildren = node.children.length > 0;
-
+    const handleDelete = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        await onDelete(node.id);
+    };
     return (
         <div>
             <div 
@@ -73,14 +63,14 @@ const NavItem: React.FC<{
                 <span className="text-sm mr-2">{node.icon}</span>
                 <span className="text-sm text-gray-800 dark:text-gray-200 flex-1 truncate">{node.title}</span>
                 <button 
-                    onClick={(e) => {e.stopPropagation(); onDelete(node.id)}}
+                    onClick={handleDelete} 
                     className="p-1 rounded text-gray-400 opacity-0 group-hover:opacity-100 hover:bg-gray-200 hover:text-gray-800 dark:hover:bg-slate-600 dark:hover:text-gray-200"
                 >
                     <TrashIcon />
                 </button>
             </div>
             {hasChildren && isOpen && (
-                 <div className="mt-1">
+                <div className="mt-1">
                     {node.children.map(child => (
                         <NavItem key={child.id} node={child} level={level + 1} onSelect={onSelect} onDelete={onDelete} activeDocId={activeDocId} />
                     ))}
@@ -90,30 +80,29 @@ const NavItem: React.FC<{
     );
 };
 
+const DocsView: React.FC<DocsViewProps> = ({ currentUser }) => {
+    const dispatch = useDispatch();
+    const { docs } = useSelector((state: RootState) => state.docs);
 
-const DocsView: React.FC = () => {
-    const [docs, setDocs] = useState<Doc[]>(MOCK_DOCS);
-    const [activeDocId, setActiveDocId] = useState<string | null>('1');
+    // Sidebar state
     const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1024);
-    
-    const activeDoc = useMemo(() => docs.find(d => d.id === activeDocId), [docs, activeDocId]);
 
-    const handleResize = useCallback(() => {
-        setIsSidebarOpen(window.innerWidth >= 1024);
-    }, []);
+    // Active doc state
+    const [activeDocId, setActiveDocId] = useState<string | null>(docs.length > 0 ? docs[0].id : null);
 
+    // Find the active doc
+    const activeDoc = useMemo(() => docs.find(d => d.id === activeDocId) || null, [docs, activeDocId]);
+
+    // Ensure activeDocId is valid after data load/mutation
     useEffect(() => {
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, [handleResize]);
-    
-    const handleSelectDoc = (id: string) => {
-        setActiveDocId(id);
-        if (window.innerWidth < 1024) {
-            setIsSidebarOpen(false);
+        if (!activeDocId && docs.length > 0) {
+            setActiveDocId(docs[0].id);
+        } else if (activeDocId && !docs.some(d => d.id === activeDocId)) {
+            setActiveDocId(docs.length > 0 ? docs[0].id : null);
         }
-    };
+    }, [docs, activeDocId]);
 
+    // Editor instance
     const editor = useEditor({
         extensions: [
             StarterKit,
@@ -124,53 +113,60 @@ const DocsView: React.FC = () => {
         content: activeDoc?.content || '',
         editorProps: {
             attributes: {
-              class: 'prose dark:prose-invert prose-sm sm:prose-base lg:prose-lg m-5 focus:outline-none',
+                class: 'prose dark:prose-invert prose-sm sm:prose-base lg:prose-lg m-5 focus:outline-none',
             },
         },
     });
 
+    // Update editor content when activeDoc changes
     useEffect(() => {
-        if (editor && activeDoc?.content !== editor.getHTML()) {
-             editor.commands.setContent(activeDoc?.content || '');
+        if (editor && activeDoc) {
+            if (activeDoc.content !== editor.getHTML()) {
+                editor.commands.setContent(activeDoc.content || '');
+            }
         } else if (editor && !activeDoc) {
-             editor.commands.setContent('');
+            editor.commands.setContent('');
         }
     }, [activeDoc, editor]);
-    
-    const handleSave = () => {
-        if (activeDoc && editor) {
-            setDocs(docs.map(doc => doc.id === activeDocId ? { ...doc, title: activeDoc.title, content: editor.getHTML() } : doc));
+
+    // Save handler
+    const handleSave = useCallback(() => {
+        if (!editor || !activeDoc) return;
+        const html = editor.getHTML();
+        if (html !== activeDoc.content) {
+            const updatedDoc: Doc = { ...activeDoc, content: html };
+            dispatch(updateDoc(updatedDoc));
         }
-    };
+    }, [editor, activeDoc, dispatch]);
 
     // Auto-save on blur
     useEffect(() => {
         if (!editor) return;
-        
-        const handleBlur = () => {
-            handleSave();
-        };
-        
+        const handleBlur = () => handleSave();
         editor.on('blur', handleBlur);
-        
         return () => {
             editor.off('blur', handleBlur);
-        }
-    }, [editor, activeDoc, docs]);
-    
-    const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        };
+    }, [editor, handleSave]);
+
+    // Title change handler
+    const handleTitleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!activeDoc) return;
         const newTitle = e.target.value;
-        const updatedDoc = { ...activeDoc, title: newTitle };
-        setDocs(docs.map(doc => doc.id === activeDocId ? updatedDoc : doc));
-    }
-    
+        const updatedDoc: Doc = { ...activeDoc, title: newTitle };
+        try {
+            await dispatch(updateDoc(updatedDoc)).unwrap();
+        } catch (error) {
+            console.error(`Failed to update document title ${activeDoc.id}:`, error);
+        }
+    };
+
+    // Doc tree for sidebar
     const docTree = useMemo(() => {
         const nodes: Record<string, DocNode> = {};
         docs.forEach(doc => {
             nodes[doc.id] = { ...doc, children: [] };
         });
-
         const tree: DocNode[] = [];
         docs.forEach(doc => {
             if (doc.parentId && nodes[doc.parentId]) {
@@ -182,53 +178,53 @@ const DocsView: React.FC = () => {
         return tree;
     }, [docs]);
 
-    const handleNewDoc = () => {
-        const newDoc: Doc = {
-            id: Date.now().toString(),
-            title: 'Untitled',
+    // New doc handler
+    const handleNewDoc = async () => {
+        handleSave();
+        const newDocPayload = {
+            title: 'Untitled Page',
             icon: '📄',
-            parentId: null,
+            parentId: activeDocId,
             content: '',
-        };
-        setDocs(prev => [...prev, newDoc]);
-        setActiveDocId(newDoc.id);
-    };
-
-    const handleDeleteDoc = (docIdToDelete: string) => {
-        if (!window.confirm("Are you sure you want to delete this page and all its subpages? This action cannot be undone.")) return;
-
-        const idsToDelete = new Set<string>();
-        const findChildrenRecursive = (id: string) => {
-            idsToDelete.add(id);
-            docs.filter(d => d.parentId === id).forEach(child => findChildrenRecursive(child.id));
-        };
-        findChildrenRecursive(docIdToDelete);
-
-        const remainingDocs = docs.filter(doc => !idsToDelete.has(doc.id));
-        
-        if (activeDocId && idsToDelete.has(activeDocId)) {
-            const deletedDoc = docs.find(d => d.id === docIdToDelete);
-            const parent = remainingDocs.find(d => d.id === deletedDoc?.parentId);
-            if (parent) {
-                setActiveDocId(parent.id);
-            } else if (remainingDocs.length > 0) {
-                setActiveDocId(remainingDocs[0].id);
-            } else {
-                 setActiveDocId(null);
-            }
+        } as Omit<Doc, 'id'>;
+        try {
+            const result = await dispatch(createDoc(newDocPayload)).unwrap();
+            setActiveDocId(result.id);
+        } catch (error) {
+            console.error('Failed to create new document:', error);
         }
-        setDocs(remainingDocs);
     };
 
+    // Delete doc handler
+    const handleDeleteDoc = async (docIdToDelete: string) => {
+        if (!window.confirm("Are you sure you want to delete this page and all its subpages? This action cannot be undone.")) return;
+        try {
+            await dispatch(deleteDoc(docIdToDelete)).unwrap();
+        } catch (error) {
+            console.error('Failed to delete document:', error);
+            alert("Error: Could not delete document.");
+        }
+    };
+
+    // Select doc handler
+    const handleSelectDoc = (id: string) => {
+        handleSave();
+        setActiveDocId(id);
+        if (window.innerWidth < 1024) {
+            setIsSidebarOpen(false);
+        }
+    };
+
+    // Slash commands for FloatingMenu
     const slashCommands = [
-        { title: 'Text', description: 'Just start writing with plain text.', icon: <TypeIcon />, command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setNode('paragraph').run()},
-        { title: 'Heading 1', description: 'Big section heading.', icon: <Heading1Icon />, command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setNode('heading', { level: 1 }).run()},
-        { title: 'Heading 2', description: 'Medium section heading.', icon: <Heading2Icon />, command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setNode('heading', { level: 2 }).run()},
-        { title: 'Bullet List', description: 'Create a simple bulleted list.', icon: <BulletListIcon />, command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleBulletList().run()},
-        { title: 'Numbered List', description: 'Create a list with numbering.', icon: <NumberedListIcon />, command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleOrderedList().run()},
-        { title: 'Quote', description: 'Capture a quote.', icon: <QuoteIcon />, command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleBlockquote().run()},
-        { title: 'Code Block', description: 'Capture a code snippet.', icon: <CodeBlockIcon />, command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleCodeBlock().run()},
-        { title: 'Divider', description: 'Visually divide sections.', icon: <div className="w-5 h-5 flex items-center justify-center"><div className="w-full h-0.5 bg-current"></div></div>, command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setHorizontalRule().run()},
+        { title: 'Text', description: 'Just start writing with plain text.', icon: <TypeIcon />, command: ({ editor, range }: any) => editor.chain().focus().deleteRange(range).setNode('paragraph').run()},
+        { title: 'Heading 1', description: 'Big section heading.', icon: <Heading1Icon />, command: ({ editor, range }: any) => editor.chain().focus().deleteRange(range).setNode('heading', { level: 1 }).run()},
+        { title: 'Heading 2', description: 'Medium section heading.', icon: <Heading2Icon />, command: ({ editor, range }: any) => editor.chain().focus().deleteRange(range).setNode('heading', { level: 2 }).run()},
+        { title: 'Bullet List', description: 'Create a simple bulleted list.', icon: <BulletListIcon />, command: ({ editor, range }: any) => editor.chain().focus().deleteRange(range).toggleBulletList().run()},
+        { title: 'Numbered List', description: 'Create a list with numbering.', icon: <NumberedListIcon />, command: ({ editor, range }: any) => editor.chain().focus().deleteRange(range).toggleOrderedList().run()},
+        { title: 'Quote', description: 'Capture a quote.', icon: <QuoteIcon />, command: ({ editor, range }: any) => editor.chain().focus().deleteRange(range).toggleBlockquote().run()},
+        { title: 'Code Block', description: 'Capture a code snippet.', icon: <CodeBlockIcon />, command: ({ editor, range }: any) => editor.chain().focus().deleteRange(range).toggleCodeBlock().run()},
+        { title: 'Divider', description: 'Visually divide sections.', icon: <div className="w-5 h-5 flex items-center justify-center"><div className="w-full h-0.5 bg-current"></div></div>, command: ({ editor, range }: any) => editor.chain().focus().deleteRange(range).setHorizontalRule().run()},
     ];
 
     return (
@@ -236,30 +232,33 @@ const DocsView: React.FC = () => {
             {isSidebarOpen && (
                 <div onClick={() => setIsSidebarOpen(false)} className="absolute inset-0 z-40 bg-gray-900/10 lg:hidden" aria-hidden="true" />
             )}
-            
             <nav className={`absolute lg:relative inset-y-0 left-0 z-50 lg:z-auto bg-gray-50 dark:bg-slate-800 border-r border-gray-200 dark:border-slate-700 flex flex-col transition-transform duration-300 ease-in-out w-72 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                 <div className="flex justify-between items-center p-4 mb-2 shrink-0">
                     <h2 className="text-base font-semibold text-gray-700 dark:text-gray-300">Library</h2>
                     <button onClick={() => setIsSidebarOpen(false)} className="p-1 text-gray-500 hover:text-gray-800 lg:hidden" aria-label="Close sidebar"><XIcon className="w-6 h-6" /></button>
                 </div>
-
                 <div className="flex-grow overflow-y-auto space-y-1 px-2">
                     {docTree.map(rootNode => (
-                        <NavItem key={rootNode.id} node={rootNode} level={0} onSelect={handleSelectDoc} onDelete={handleDeleteDoc} activeDocId={activeDocId} />
+                        <NavItem 
+                            key={rootNode.id} 
+                            node={rootNode} 
+                            level={0} 
+                            onSelect={handleSelectDoc} 
+                            onDelete={handleDeleteDoc}
+                            activeDocId={activeDocId} 
+                        />
                     ))}
                 </div>
                 <div className="p-2 border-t border-gray-200 dark:border-slate-700">
                     <button onClick={handleNewDoc} className="w-full text-left text-sm p-2 rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-700">+ New Page</button>
                 </div>
             </nav>
-
             <main className="flex-1 overflow-y-auto flex flex-col relative">
                 {!isSidebarOpen && (
-                   <button onClick={() => setIsSidebarOpen(true)} className="absolute top-4 left-4 z-10 p-2 text-gray-500 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-slate-700" aria-label="Open sidebar">
-                       <HamburgerIcon className="w-6 h-6" />
-                   </button>
+                    <button onClick={() => setIsSidebarOpen(true)} className="absolute top-4 left-4 z-10 p-2 text-gray-500 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-slate-700" aria-label="Open sidebar">
+                        <HamburgerIcon className="w-6 h-6" />
+                    </button>
                 )}
-                
                 {editor && activeDoc && (
                     <>
                         <BubbleMenu editor={editor} tippyOptions={{ duration: 100, placement: 'top-start' }} className="flex items-center bg-gray-800 text-white rounded-md shadow-lg overflow-hidden dark:bg-black dark:border dark:border-slate-700">
@@ -268,7 +267,7 @@ const DocsView: React.FC = () => {
                             <button onClick={() => editor.chain().focus().toggleStrike().run()} className={`p-2 hover:bg-gray-700 dark:hover:bg-slate-700 ${editor.isActive('strike') ? 'bg-gray-600 dark:bg-slate-600' : ''}`}><s className="no-underline">S</s></button>
                             <button onClick={() => editor.chain().focus().toggleCode().run()} className={`p-2 hover:bg-gray-700 dark:hover:bg-slate-700 ${editor.isActive('code') ? 'bg-gray-600 dark:bg-slate-600' : ''}`}>&lt;/&gt;</button>
                         </BubbleMenu>
-                         <FloatingMenu 
+                        <FloatingMenu 
                             editor={editor}
                             shouldShow={({ state }) => {
                                 const { $from } = state.selection;
@@ -287,16 +286,12 @@ const DocsView: React.FC = () => {
                                         const { state } = editor;
                                         const { $from } = state.selection;
                                         const currentLineText = $from.parent.textContent;
-
                                         let range;
                                         if (currentLineText === '/') {
-                                            // If the line just has a slash, the range to delete is that slash.
                                             range = { from: $from.pos - 1, to: $from.pos };
                                         } else {
-                                            // If the line is empty, we don't need to delete anything.
                                             range = { from: $from.pos, to: $from.pos };
                                         }
-                                        
                                         item.command({ editor, range });
                                     }}
                                     className="w-full flex items-center text-left p-2 rounded-md hover:bg-gray-100 dark:hover:bg-slate-700"
@@ -311,7 +306,6 @@ const DocsView: React.FC = () => {
                         </FloatingMenu>
                     </>
                 )}
-                
                 {activeDoc ? (
                     <div className="flex-1 flex flex-col">
                         <header className="px-16 pt-12 pb-4">

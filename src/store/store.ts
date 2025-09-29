@@ -9,6 +9,7 @@ import activityReducer from './slices/activitySlice';
 import timeOffRequestReducer from './slices/timeOffRequestSlice'; 
 import organiserReducer from './slices/organiserSlice'; 
 // --- New Import ---
+import docReducer from './slices/docSlice'; 
 import ticketReducer from './slices/ticketSlice'; 
 
 export const store = configureStore({
@@ -23,6 +24,7 @@ export const store = configureStore({
     organiserElements: organiserReducer,
     // --- Add the new reducer ---
     tickets: ticketReducer,
+    docs: docReducer, // <-- ADDED
   },
 });
 

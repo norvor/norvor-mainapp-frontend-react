@@ -1,14 +1,13 @@
 // src/views/crm/team/TeamCrmView.tsx
 
-import React, { useState, useMemo } from 'react';
-import { useDispatch } from 'react-redux'; // <-- ADD useDispatch
-import { User, Contact, Deal, Activity } from '../../../types';
+import React, { useState, useMemo, useCallback } from 'react'; // ADD useCallback
+import { useDispatch } from 'react-redux';
+import { User, Contact, Deal, Activity, ActivityType } from '../../../types'; // IMPORT ActivityType
 import DealKanban from '../../../components/crm/DealKanban';
 import apiClient from '../../../utils/apiClient';
 import ContactEditorModal from '../../../components/crm/ContactEditorModal';
-// --- Import Contact CRUD Thunks ---
-import { createContact, updateContact, deleteContact } from '../../../store/slices/contactSlice'; 
-// Note: refetchContacts prop will now be obsolete, as Redux state updates automatically.
+import { createContact, updateContact, deleteContact } from '../../../store/slices/contactSlice';
+import { logActivity } from '../../../store/slices/activitySlice'; // Note: refetchContacts prop will now be obsolete, as Redux state updates automatically.
 
 
 // --- Contact List View Component ---
@@ -58,37 +57,97 @@ const ContactListView: React.FC<{
 
 // --- Contact Detail View Component ---
 // (No changes here, remains the same)
-const ContactDetailView: React.FC<{ contact: Contact; activities: Activity[]; onBack: () => void; }> = ({ contact, activities, onBack }) => (
-// ... (ContactDetailView implementation is omitted for brevity, no changes needed)
-    <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 animate-fade-in">
-        <button onClick={onBack} className="mb-4 text-sm font-medium text-violet-600 hover:underline">
-            &larr; Back to Contact List
-        </button>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{contact.name}</h2>
-        <p className="text-gray-500 dark:text-gray-400">{contact.company}</p>
-        <div className="mt-4 border-t border-gray-200 dark:border-gray-700 pt-4">
-            <p><strong>Email:</strong> {contact.email}</p>
-            <p><strong>Phone:</strong> {contact.phone}</p>
-        </div>
-        <div className="mt-6">
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">Activity Log</h3>
-            <div className="mt-4 space-y-4">
-                {activities.map(activity => (
-                    <div key={activity.id} className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-md">
-                        <p className="font-semibold text-sm">{activity.type} on {new Date(activity.date).toLocaleDateString()}</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{activity.notes}</p>
-                    </div>
-                ))}
-                 {activities.length === 0 && <p className="text-sm text-gray-500">No activities logged for this contact yet.</p>}
-            </div>
-            <form className="mt-4 border-t dark:border-gray-700 pt-4">
-                <textarea rows={3} placeholder="Log new activity..." className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:ring-violet-500 focus:border-violet-500 bg-transparent"></textarea>
-                <button type="button" className="mt-2 px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-md hover:bg-violet-700">Log Activity</button>
-            </form>
-        </div>
-    </div>
-);
+const ContactDetailView: React.FC<{ contact: Contact; activities: Activity[]; currentUser: User; onBack: () => void; }> = ({ contact, activities, currentUser, onBack }) => {
+    const dispatch = useDispatch();
+    const [notes, setNotes] = useState('');
+    const [activityType, setActivityType] = useState<ActivityType>(ActivityType.CALL);
+    const [isLogging, setIsLogging] = useState(false);
+    
+    const handleSubmitActivity = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!notes.trim()) return;
 
+        setIsLogging(true);
+        
+        // Construct the payload for the logActivity thunk
+        const newActivityPayload: Omit<Activity, 'id'> = {
+            type: activityType,
+            notes: notes.trim(),
+            date: new Date().toISOString().split('T')[0], // Current date
+            contactId: contact.id,
+            userId: currentUser.id,
+        };
+        
+        try {
+            await dispatch(logActivity(newActivityPayload)).unwrap();
+            
+            // Clear the form on success
+            setNotes('');
+            alert('Activity logged successfully!');
+
+        } catch (error) {
+            console.error('Failed to log activity:', error);
+            alert('Error logging activity.');
+        } finally {
+            setIsLogging(false);
+        }
+    };
+
+    return (
+        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 animate-fade-in">
+            <button onClick={onBack} className="mb-4 text-sm font-medium text-violet-600 hover:underline">
+                &larr; Back to Contact List
+            </button>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{contact.name}</h2>
+            <p className="text-gray-500 dark:text-gray-400">{contact.company}</p>
+            <div className="mt-4 border-t border-gray-200 dark:border-gray-700 pt-4">
+                <p><strong>Email:</strong> {contact.email}</p>
+                <p><strong>Phone:</strong> {contact.phone}</p>
+            </div>
+            <div className="mt-6">
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">Activity Log</h3>
+                <div className="mt-4 space-y-4">
+                    {activities.map(activity => (
+                        <div key={activity.id} className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-md">
+                            <p className="font-semibold text-sm">{activity.type} on {new Date(activity.date).toLocaleDateString()}</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{activity.notes}</p>
+                        </div>
+                    ))}
+                     {activities.length === 0 && <p className="text-sm text-gray-500">No activities logged for this contact yet.</p>}
+                </div>
+                
+                {/* --- Activity Logging Form --- */}
+                <form className="mt-4 border-t dark:border-gray-700 pt-4" onSubmit={handleSubmitActivity}>
+                    <select
+                        value={activityType}
+                        onChange={(e) => setActivityType(e.target.value as ActivityType)}
+                        className="w-full mb-2 p-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:ring-violet-500 focus:border-violet-500 bg-transparent"
+                        disabled={isLogging}
+                    >
+                        {Object.values(ActivityType).map(type => (
+                            <option key={type} value={type}>{type}</option>
+                        ))}
+                    </select>
+                    <textarea 
+                        rows={3} 
+                        placeholder="Log new activity notes..." 
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:ring-violet-500 focus:border-violet-500 bg-transparent"
+                        disabled={isLogging}
+                    ></textarea>
+                    <button 
+                        type="submit" 
+                        disabled={isLogging || !notes.trim()}
+                        className="mt-2 px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-md hover:bg-violet-700 disabled:bg-violet-400"
+                    >
+                        {isLogging ? 'Logging...' : 'Log Activity'}
+                    </button>
+                </form>
+            </div>
+        </div>
+    );
+};
 
 // --- Main Team View Component ---
 interface TeamCrmViewProps {
@@ -163,8 +222,13 @@ const TeamCrmView: React.FC<TeamCrmViewProps> = ({ currentUser, contacts, deals,
 // ... (renderContent implementation is omitted for brevity, no changes needed)
     if (activeTab === 'contacts') {
       return selectedContact 
-        ? <ContactDetailView contact={selectedContact} activities={contactActivities} onBack={() => setSelectedContact(null)} />
-        : <ContactListView 
+        ? <ContactDetailView 
+            contact={selectedContact} 
+            activities={contactActivities} 
+            currentUser={currentUser} // <--- PASS THE CURRENT USER HERE
+            onBack={() => setSelectedContact(null)} 
+          />
+          : <ContactListView 
             contacts={myContacts} 
             onSelectContact={setSelectedContact}
             onEditContact={(contact) => { setEditingContact(contact); setIsModalOpen(true); }}

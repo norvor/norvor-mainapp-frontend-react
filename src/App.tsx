@@ -17,6 +17,7 @@ import DashboardView from './views/dashboard/DashboardView';
 import SocialView from './views/social/SocialView';
 
 // --- Redux Imports ---
+import { fetchDocs } from './store/slices/docSlice';
 import { fetchOrganiserElements } from './store/slices/organiserSlice';
 import { fetchTickets } from './store/slices/ticketSlice';
 import { RootState, AppDispatch } from './store/store';
@@ -52,13 +53,20 @@ const App: React.FC = () => {
   const { timeOffRequests, loading: timeOffRequestsLoading, error: timeOffRequestsError } = useSelector((state: RootState) => state.timeOffRequests); 
   const { organiserElements, loading: organiserElementsLoading, error: organiserElementsError } = useSelector((state: RootState) => state.organiserElements); 
   const { tickets, loading: ticketsLoading, error: ticketsError } = useSelector((state: RootState) => state.tickets);
+  const { docs, loading: docsLoading, error: docsError } = useSelector((state: RootState) => (state.docs as any)); // <-- ADDED
 
   // Combine loading and error states from all slices
   const isLoading = usersLoading || contactsLoading || dealsLoading || projectsLoading || tasksLoading 
-    || activitiesLoading || timeOffRequestsLoading || organiserElementsLoading || ticketsLoading;
+    || activitiesLoading || timeOffRequestsLoading || organiserElementsLoading || ticketsLoading 
+    // --- New Loading State ---
+    || docsLoading; // <-- ADDED
+    
   const error = usersError || contactsError || dealsError || projectsError || tasksError 
-    || activitiesError || timeOffRequestsError || organiserElementsError || ticketsError;
-
+    || activitiesError || timeOffRequestsError || organiserElementsError || ticketsError 
+    // --- New Error State ---
+    || docsError; // <-- ADDED
+  // Combine loading and error states from all slices
+  
   // --- LOCAL UI STATE ---
   const [activeView, setActiveView] = useState<ActiveView>({
     type: 'team',
@@ -82,8 +90,8 @@ const App: React.FC = () => {
     }
     console.log("Auth Token:", currentToken);
     if (!currentToken) {
-      //window.location.href = 'http://localhost:3000/login';
-      window.location.href = 'https://www.norvorx.com/login';
+      window.location.href = 'http://localhost:3000/login';
+      //window.location.href = 'https://www.norvorx.com/login';
       return;
     }
     dispatch(fetchCurrentUser());
@@ -96,6 +104,7 @@ const App: React.FC = () => {
     dispatch(fetchTimeOffRequests());
     dispatch(fetchOrganiserElements());
     dispatch(fetchTickets());
+    dispatch(fetchDocs());
   }, [dispatch]);
 
   const handleResize = useCallback(() => {
@@ -203,6 +212,11 @@ const App: React.FC = () => {
           tickets={activeTeamTickets}
           allUsers={users}
           currentUser={currentUser}
+        />;
+      case 'docs': // --- Update Docs Case ---
+        return <DocsView
+          currentUser={contextualUser}
+          initialDocs={docs as any} // Pass the fetched documents
         />;
       case 'crm':
         return <CrmView

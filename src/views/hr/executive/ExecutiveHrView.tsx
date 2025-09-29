@@ -1,9 +1,62 @@
+// src/views/hr/executive/ExecutiveHrView.tsx
 
 import React, { useState, useMemo } from 'react';
-import { User, TimeOffRequest } from '../../../types';
+import { useDispatch } from 'react-redux'; // <-- ADD useDispatch
+import { User, TimeOffRequest, UserRole } from '../../../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { updateUserRole } from '../../../store/slices/userSlice'; // <-- Add this import at the top
 
-// Sub-components
+
+// NOTE: We rely on the thunk being implemented in userSlice.ts
+// We'll manually include the logic here for the user to paste.
+// Assuming updateUserRole is now accessible.
+// Since we cannot directly import updateUserRole, we'll simulate the import.
+
+// --- Helper component for Role Management ---
+const RolePermissionManagement: React.FC<{ users: User[]; onRoleChange: (userId: number, newRole: UserRole) => void }> = ({ users, onRoleChange }) => {
+    // Memoize the list of roles for the dropdown
+    const availableRoles = useMemo(() => Object.values(UserRole), []);
+
+    return (
+        <div className="bg-white shadow rounded-lg p-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Role & Permission Management</h3>
+            <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50"><tr>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Employee</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Department</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Current Role</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Change Role</th>
+                    </tr></thead>
+                    <tbody>
+                        {users.map(u => (
+                            <tr key={u.id}>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">{u.name}</td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm">{u.department}</td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm">{u.role}</td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm">
+                                    <select 
+                                        defaultValue={u.role}
+                                        onChange={(e) => onRoleChange(u.id, e.target.value as UserRole)}
+                                        className="border-gray-300 bg-white rounded-md text-sm p-1"
+                                    >
+                                        {availableRoles.map(role => (
+                                            <option key={role} value={role}>{role}</option>
+                                        ))}
+                                    </select>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+            <p className="text-sm text-gray-500 mt-4">Changing a user's role here updates their access across the application.</p>
+        </div>
+    );
+};
+
+
+// Sub-components (EmployeeManagementView, HrReportsDashboard - kept for completeness)
 const EmployeeManagementView: React.FC<{ users: User[] }> = ({ users }) => (
     <div className="bg-white shadow rounded-lg p-6">
         <h3 className="text-lg font-semibold text-gray-800 mb-4">Employee Management</h3>
@@ -72,12 +125,6 @@ const HrReportsDashboard: React.FC<{ users: User[] }> = ({ users }) => {
     );
 };
 
-const RolePermissionManagement: React.FC = () => (
-    <div className="bg-white shadow rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Role & Permission Management</h3>
-        <p className="text-gray-500">A panel to manage system-wide roles and their permissions would be displayed here.</p>
-    </div>
-);
 
 // Main Component
 interface ExecutiveHrViewProps {
@@ -89,12 +136,35 @@ type ExecutiveHrTab = 'employees' | 'reports' | 'permissions';
 
 const ExecutiveHrView: React.FC<ExecutiveHrViewProps> = (props) => {
   const [activeTab, setActiveTab] = useState<ExecutiveHrTab>('reports');
-  
+  const dispatch = useDispatch(); // <-- Initialize dispatch
+
+  // Function to be passed down to handle the role change and dispatch the thunk
+  const handleRoleChange = async (userId: number, newRole: UserRole) => {
+    const userName = props.allUsers.find(u => u.id === userId)?.name || 'Unknown User';
+
+    if (!window.confirm(`Are you sure you want to change the role for ${userName} to ${newRole}?`)) {
+        return;
+    }
+
+    try {
+        await dispatch(updateUserRole({ userId, role: newRole })).unwrap(); // <-- This is the backend call
+        alert(`Successfully set ${userName}'s role to ${newRole}.`);
+    } catch (error) {
+        console.error("Failed to update user role:", error);
+        alert(`Error updating role for ${userName}. See console.`);
+    }
+};
+
+
   const renderContent = () => {
     switch(activeTab) {
         case 'employees': return <EmployeeManagementView users={props.allUsers} />;
         case 'reports': return <HrReportsDashboard users={props.allUsers} />;
-        case 'permissions': return <RolePermissionManagement />;
+        case 'permissions': 
+            return <RolePermissionManagement 
+                        users={props.allUsers} 
+                        onRoleChange={handleRoleChange} 
+                    />;
     }
   };
 
