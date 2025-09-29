@@ -47,6 +47,14 @@ const App: React.FC = () => {
   // --- DATA FETCHING LOGIC ---
   useEffect(() => {
     const fetchAllData = async () => {
+      // ** ADD THIS CHECK **
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        // ** If no token, redirect to the marketing site's login page **
+        window.location.href = 'http://localhost:3000/login'; 
+        return;
+      }
+
       try {
         setIsLoading(true);
         setError(null);
