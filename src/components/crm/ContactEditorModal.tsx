@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Contact, User } from '../../../types';
+import { Contact, User } from '../../types';
 
 interface ContactEditorModalProps {
   contact?: Contact | null;
