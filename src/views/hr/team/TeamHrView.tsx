@@ -1,8 +1,14 @@
+// src/views/hr/team/TeamHrView.tsx
 
 import React, { useState, useMemo } from 'react';
+import { useDispatch } from 'react-redux'; // <-- ADD useDispatch
 import { User, TimeOffRequest, RequestStatus, LeaveType } from '../../../types';
+import { submitTimeOffRequest } from '../../../store/slices/timeOffRequestSlice'; // <-- IMPORT submitTimeOffRequest
 
 // Sub-components
+
+// ... (MyProfileView and CompanyDirectory are omitted for brevity, no changes needed)
+
 const MyProfileView: React.FC<{ user: User }> = ({ user }) => (
     <div className="bg-white shadow rounded-lg p-6">
         <h3 className="text-lg font-semibold text-gray-800">My Profile</h3>
@@ -19,41 +25,140 @@ const MyProfileView: React.FC<{ user: User }> = ({ user }) => (
     </div>
 );
 
-const TimeOffView: React.FC<{ user: User, requests: TimeOffRequest[] }> = ({ user, requests }) => (
-    <div className="bg-white shadow rounded-lg p-6">
-        <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-gray-800">Time-Off</h3>
-            <button className="px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-md hover:bg-violet-700">Request Time Off</button>
-        </div>
-        <div className="grid grid-cols-2 gap-4 mb-4 text-center">
-            {Object.entries(user.leaveBalance || {}).map(([type, balance]) => (
-                <div key={type} className="bg-gray-100 p-3 rounded-md">
-                    <p className="text-gray-500 text-sm">{type}</p>
-                    <p className="font-bold text-xl">{balance} days</p>
-                </div>
-            ))}
-        </div>
-        <h4 className="font-semibold text-gray-700 mt-6">My Requests</h4>
-        <div className="overflow-x-auto mt-2">
-            <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50"><tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Dates</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                </tr></thead>
-                <tbody>
-                {requests.map(r => (
-                    <tr key={r.id}>
-                        <td className="px-4 py-2 whitespace-nowrap text-sm">{r.type}</td>
-                        <td className="px-4 py-2 whitespace-nowrap text-sm">{r.startDate} to {r.endDate}</td>
-                        <td className="px-4 py-2 whitespace-nowrap text-sm font-medium">{r.status}</td>
-                    </tr>
+const TimeOffView: React.FC<{ user: User, requests: TimeOffRequest[] }> = ({ user, requests }) => {
+    const dispatch = useDispatch();
+    const [isRequesting, setIsRequesting] = useState(false);
+    
+    // Form State
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+    const [type, setType] = useState<LeaveType>(LeaveType.VACATION);
+    const [reason, setReason] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!startDate || !endDate) return alert("Please select start and end dates.");
+        
+        setIsSubmitting(true);
+        
+        const newRequest = {
+            user_id: user.id,
+            type,
+            startDate,
+            endDate,
+            reason,
+            status: RequestStatus.PENDING,
+            // The backend expects snake_case for user_id in the create schema
+
+        } as Omit<TimeOffRequest, 'id'> & { user_id: number }; // Correct type for payload
+        
+        try {
+            await dispatch(submitTimeOffRequest(newRequest)).unwrap();
+            
+            // Reset form and UI
+            setStartDate('');
+            setEndDate('');
+            setReason('');
+            setIsRequesting(false);
+            alert("Time-off request submitted for approval.");
+
+        } catch (error) {
+            console.error("Failed to submit request:", error);
+            alert("Error submitting request. Check console for details.");
+        } finally {
+            setIsSubmitting(false);
+        }
+    }
+
+    return (
+        <div className="bg-white shadow rounded-lg p-6">
+            <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-800">Time-Off</h3>
+                <button 
+                    onClick={() => setIsRequesting(prev => !prev)} 
+                    className="px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-md hover:bg-violet-700"
+                >
+                    {isRequesting ? 'Cancel Request' : 'Request Time Off'}
+                </button>
+            </div>
+            
+            {/* Request Form */}
+            {isRequesting && (
+                <form onSubmit={handleSubmit} className="mt-4 p-4 border border-violet-200 rounded-md space-y-3 bg-violet-50">
+                    <h4 className="font-semibold text-gray-700">New Request</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                         <select 
+                            value={type} 
+                            onChange={(e) => setType(e.target.value as LeaveType)}
+                            required
+                            className="w-full p-2 border rounded-md text-sm"
+                        >
+                            {Object.values(LeaveType).map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                        <input 
+                            type="date" 
+                            value={startDate} 
+                            onChange={(e) => setStartDate(e.target.value)}
+                            required
+                            className="w-full p-2 border rounded-md text-sm"
+                        />
+                         <p className="text-sm self-center">to</p>
+                        <input 
+                            type="date" 
+                            value={endDate} 
+                            onChange={(e) => setEndDate(e.target.value)}
+                            required
+                            className="w-full p-2 border rounded-md text-sm"
+                        />
+                    </div>
+                    <textarea 
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                        placeholder="Reason (optional)" 
+                        rows={2} 
+                        className="w-full p-2 border rounded-md text-sm"
+                    />
+                    <button 
+                        type="submit" 
+                        disabled={isSubmitting || !startDate || !endDate}
+                        className="w-full px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-md hover:bg-violet-700 disabled:opacity-50"
+                    >
+                        {isSubmitting ? 'Submitting...' : 'Submit for Approval'}
+                    </button>
+                </form>
+            )}
+
+            <div className="grid grid-cols-2 gap-4 mb-4 mt-6 text-center">
+                {Object.entries(user.leaveBalance || {}).map(([type, balance]) => (
+                    <div key={type} className="bg-gray-100 p-3 rounded-md">
+                        <p className="text-gray-500 text-sm">{type}</p>
+                        <p className="font-bold text-xl">{balance} days</p>
+                    </div>
                 ))}
-                </tbody>
-            </table>
+            </div>
+            <h4 className="font-semibold text-gray-700 mt-6">My Requests</h4>
+            <div className="overflow-x-auto mt-2">
+                <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50"><tr>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Dates</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    </tr></thead>
+                    <tbody>
+                    {requests.map(r => (
+                        <tr key={r.id}>
+                            <td className="px-4 py-2 whitespace-nowrap text-sm">{r.type}</td>
+                            <td className="px-4 py-2 whitespace-nowrap text-sm">{r.startDate} to {r.endDate}</td>
+                            <td className="px-4 py-2 whitespace-nowrap text-sm font-medium">{r.status}</td>
+                        </tr>
+                    ))}
+                    </tbody>
+                </table>
+            </div>
         </div>
-    </div>
-);
+    );
+};
 
 const CompanyDirectory: React.FC<{ users: User[] }> = ({ users }) => (
     <div className="bg-white shadow rounded-lg p-6">

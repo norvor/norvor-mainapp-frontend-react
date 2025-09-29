@@ -1,61 +1,27 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react'; // <--- REMOVED useState, useEffect, useMemo
 import { TEAMS } from '../../data/mockData';
-import apiClient from '../../utils/apiClient'; // Import our new API client
+// REMOVED apiClient import
 import { User, Project, Ticket } from '../../types'; // Import types for our data
 
 interface TeamHubViewProps {
   teamId?: string;
+  teamMembers: User[]; // <--- NEW PROP
+  projects: Project[]; // <--- NEW PROP
+  tickets: Ticket[];   // <--- UPDATED PROP
 }
 
-const TeamHubView: React.FC<TeamHubViewProps> = ({ teamId }) => {
+const TeamHubView: React.FC<TeamHubViewProps> = ({ teamId, teamMembers, projects, tickets }) => { // <--- UPDATED PROPS
   const teamName = TEAMS.find(t => t.id === teamId)?.name || 'Unknown Team';
 
-  // State to hold the real data we fetch from the backend
-  const [teamMembers, setTeamMembers] = useState<User[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // --- REMOVED: All local state for members, projects, tickets, loading, error ---
+  // --- REMOVED: The entire useEffect block for fetching data ---
 
-  useEffect(() => {
-    if (!teamId) return;
-
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-
-        // Fetch all data in parallel for efficiency
-        const [usersData, projectsData, ticketsData] = await Promise.all([
-          apiClient('/users/'),
-          apiClient('/pm/projects/'),
-          apiClient(`/requests/tickets/team/${teamId}`)
-        ]);
-
-        // In a real app, you'd filter users and projects by teamId on the backend
-        // For now, we'll just display all of them as an example
-        setTeamMembers(usersData);
-        setProjects(projectsData);
-        setTickets(ticketsData);
-
-      } catch (err: any) {
-        setError(err.message || "Failed to fetch team hub data.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [teamId]); // This effect runs whenever the teamId changes
-
-  if (isLoading) {
-    return <div className="text-center p-8">Loading Team Hub...</div>;
+  // Loading/Error check is now simpler based on props
+  if (!teamId || teamMembers.length === 0) {
+    // Note: A simple check, assuming the global loading in App.tsx has completed.
+    return <div className="text-center p-8">Team data is not available.</div>;
   }
-
-  if (error) {
-    return <div className="text-center p-8 text-red-500">Error: {error}</div>;
-  }
-
+  
   return (
     <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 animate-fade-in">
       <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">Welcome to the {teamName} Hub</h1>

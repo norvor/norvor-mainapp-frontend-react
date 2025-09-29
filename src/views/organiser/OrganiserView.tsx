@@ -1,5 +1,7 @@
+// src/views/organiser/OrganiserView.tsx
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
+import { useDispatch } from 'react-redux';
 import { OrganiserElement, OrganiserElementType, User, UserRole } from '../../types';
 
 // Icons for tree nodes
@@ -8,6 +10,13 @@ import TeamIcon from '../../components/icons/TeamIcon';
 import RoleIcon from '../../components/icons/RoleIcon';
 import SoftwareIcon from '../../components/icons/SoftwareIcon';
 import ProcessIcon from '../../components/icons/ProcessIcon';
+
+// --- Import CRUD Thunks ---
+import { 
+    createOrganiserElement, 
+    updateOrganiserElement,
+    deleteOrganiserElement 
+} from '../../store/slices/organiserSlice'; 
 
 // Prop interface for the main view
 interface OrganiserViewProps {
@@ -20,7 +29,7 @@ interface TreeNode extends OrganiserElement {
     children: TreeNode[];
 }
 
-// Icon mapping
+// Icon mapping (omitted for brevity)
 const ELEMENT_ICONS: Record<OrganiserElementType, React.FC<{className?: string}>> = {
     [OrganiserElementType.DEPARTMENT]: DepartmentIcon,
     [OrganiserElementType.TEAM]: TeamIcon,
@@ -42,6 +51,9 @@ const TreeItem: React.FC<{
 }> = ({ node, level, selectedElementId, onSelect, isEditable, onDragStart, onDrop, onDragOver }) => {
     const Icon = ELEMENT_ICONS[node.type];
     const [isExpanded, setIsExpanded] = useState(true);
+    
+    // --- FIX: Ensure node.children is checked for existence ---
+    const hasChildren = node.children && node.children.length > 0; 
 
     const handleDrop = (e: React.DragEvent) => {
         e.preventDefault();
@@ -65,18 +77,20 @@ const TreeItem: React.FC<{
                         className="mr-2 p-0.5 rounded hover:bg-gray-200 dark:hover:bg-slate-600"
                         onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }}
                     >
-                        {node.children.length > 0 && (
+                        {/* Use the defensive check */}
+                        {hasChildren && (
                             <svg className={`w-3 h-3 text-gray-500 dark:text-gray-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
                             </svg>
                         )}
-                        {node.children.length === 0 && <div className="w-3 h-3" />}
+                        {!hasChildren && <div className="w-3 h-3" />}
                     </button>
                     <Icon className="w-4 h-4 mr-2 text-gray-600 dark:text-gray-400" />
                     <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{node.label}</span>
                 </div>
             </div>
-            {isExpanded && node.children.length > 0 && (
+            {/* Use the defensive check for rendering children */}
+            {hasChildren && isExpanded && ( 
                 <div>
                     {node.children.map(child => (
                         <TreeItem
@@ -100,8 +114,12 @@ const TreeItem: React.FC<{
 
 // Main Structure View Component
 const OrganiserView: React.FC<OrganiserViewProps> = ({ initialElements, currentUser }) => {
-    const [elements, setElements] = useState<OrganiserElement[]>(initialElements);
+    // Use Redux state (passed as prop) directly as the source of truth
+    const elements = initialElements; 
+    const dispatch = useDispatch();
+    
     const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
+    const [draggedElementId, setDraggedElementId] = useState<string | null>(null);
 
     const isEditable = useMemo(() => currentUser.role === UserRole.EXECUTIVE, [currentUser.role]);
 
@@ -109,9 +127,8 @@ const OrganiserView: React.FC<OrganiserViewProps> = ({ initialElements, currentU
         return elements.find(el => el.id === selectedElementId);
     }, [elements, selectedElementId]);
 
-    // Build the tree from the flat list of elements
+    // Build the tree (unchanged logic, now depends on props)
     const orgTree = useMemo((): TreeNode[] => {
-        // Fix: Explicitly type `elementMap` to correct type inference issues where `get` was returning `unknown`.
         const elementMap: Map<string, TreeNode> = new Map(elements.map(el => [el.id, { ...el, children: [] } as TreeNode]));
         const roots: TreeNode[] = [];
         elements.forEach(el => {
@@ -127,23 +144,50 @@ const OrganiserView: React.FC<OrganiserViewProps> = ({ initialElements, currentU
         return roots;
     }, [elements]);
 
+    // Clear selection if element is deleted (runs whenever elements update)
+    React.useEffect(() => {
+        if (selectedElementId && !elements.some(el => el.id === selectedElementId)) {
+            setSelectedElementId(null);
+        }
+    }, [elements, selectedElementId]);
+
+
     const handleSelect = (elementId: string) => {
         setSelectedElementId(elementId);
     };
     
-    // --- Drag and Drop Handlers ---
+    // Helper function to dispatch the update thunk
+    const handleUpdate = useCallback(async (element: OrganiserElement) => {
+        if (!isEditable) return;
+        try {
+            await dispatch(updateOrganiserElement(element)).unwrap();
+        } catch (error) {
+            console.error("Failed to update element:", error);
+            alert("Error: Could not save changes.");
+        }
+    }, [isEditable, dispatch]);
+
+
+    // --- Drag and Drop Handlers (Update: Dispatches updateOrganiserElement) ---
     const handleDragStart = (e: React.DragEvent, elementId: string) => {
-        e.dataTransfer.setData('application/json', JSON.stringify({ elementId }));
+        setDraggedElementId(elementId);
+        e.dataTransfer.setData('text/plain', elementId);
         e.dataTransfer.effectAllowed = 'move';
     };
 
-    const handleDropOnParent = (e: React.DragEvent, parentId: string | null) => {
+    const handleDropOnParent = useCallback(async (e: React.DragEvent, newParentId: string | null) => {
         e.preventDefault();
         e.stopPropagation();
         if (!isEditable) return;
 
-        const { elementId } = JSON.parse(e.dataTransfer.getData('application/json'));
+        const elementId = e.dataTransfer.getData('text/plain') || draggedElementId;
+        if (!elementId) return;
+
+        const draggedElement = elements.find(el => el.id === elementId);
+        if (!draggedElement) return;
         
+        if (elementId === newParentId || draggedElement.parentId === newParentId) return;
+
         const isDescendant = (potentialChildId: string, potentialAncestorId: string): boolean => {
              const child = elements.find(el => el.id === potentialChildId);
              if (!child) return false;
@@ -152,15 +196,16 @@ const OrganiserView: React.FC<OrganiserViewProps> = ({ initialElements, currentU
              return isDescendant(child.parentId, potentialAncestorId);
         }
 
-        if (elementId === parentId || (parentId && isDescendant(parentId, elementId))) {
+        if (newParentId && isDescendant(newParentId, elementId)) {
             console.error("Cannot drop an element into one of its own descendants.");
+            alert("Cannot move an item under one of its sub-elements.");
             return;
         }
+        
+        const updatedElement: OrganiserElement = { ...draggedElement, parentId: newParentId };
+        handleUpdate(updatedElement);
 
-        setElements(prev => prev.map(el =>
-            el.id === elementId ? { ...el, parentId } : el
-        ));
-    };
+    }, [isEditable, elements, handleUpdate, draggedElementId]);
 
     const handleDragOver = (e: React.DragEvent) => {
         e.preventDefault();
@@ -169,29 +214,52 @@ const OrganiserView: React.FC<OrganiserViewProps> = ({ initialElements, currentU
         }
     };
 
-    // --- Element Manipulation Handlers ---
+    // --- Property/Label Change Handlers (Update: Dispatches updateOrganiserElement on blur) ---
     const handlePropertyChange = (key: string, value: string) => {
-        if (!selectedElementId || !isEditable) return;
-        setElements(prev => prev.map(el => el.id === selectedElementId ? {
-            ...el, properties: { ...el.properties, [key]: value }
-        } : el));
+        if (!selectedElement || !isEditable) return;
+        const updatedElement: OrganiserElement = {
+            ...selectedElement, 
+            properties: { ...selectedElement.properties, [key]: value }
+        };
+        handleUpdate(updatedElement);
     };
 
     const handleLabelChange = (newLabel: string) => {
-        if (!selectedElementId || !isEditable) return;
-        setElements(prev => prev.map(el => el.id === selectedElementId ? { ...el, label: newLabel } : el));
+        if (!selectedElement || !isEditable) return;
+        const updatedElement: OrganiserElement = { ...selectedElement, label: newLabel };
+        handleUpdate(updatedElement);
     };
     
-    const addElement = (type: OrganiserElementType) => {
+    // --- Delete Handler (Update: Dispatches deleteOrganiserElement) ---
+    const handleDeleteElement = async () => {
+        if (!selectedElement || !isEditable) return;
+        if (!window.confirm(`Are you sure you want to delete "${selectedElement.label}"? This cannot be undone.`)) return;
+
+        try {
+            await dispatch(deleteOrganiserElement(selectedElement.id)).unwrap();
+            setSelectedElementId(null);
+        } catch (error) {
+            console.error("Failed to delete element:", error);
+            alert("Error: Could not delete element.");
+        }
+    };
+    
+    // --- Add Handler (Update: Dispatches createOrganiserElement) ---
+    const addElement = async (type: OrganiserElementType) => {
         if (!isEditable) return;
-        const newElement: OrganiserElement = {
-            id: `el_${Date.now()}`,
+        const newElement: Omit<OrganiserElement, 'id'> = {
             type,
             label: `New ${type}`,
-            parentId: selectedElementId, // Add as child of selected, or root if none selected
+            parentId: selectedElementId, 
             properties: {}
         };
-        setElements(prev => [...prev, newElement]);
+        
+        try {
+            await dispatch(createOrganiserElement(newElement)).unwrap();
+        } catch (error) {
+            console.error("Failed to create element:", error);
+            alert("Error: Could not create element.");
+        }
     };
 
     return (
@@ -227,7 +295,17 @@ const OrganiserView: React.FC<OrganiserViewProps> = ({ initialElements, currentU
                                 Viewing in read-only mode. Only Executives can edit the structure.
                             </div>
                         )}
-                        <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">Properties</h3>
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">Properties</h3>
+                            {isEditable && (
+                                <button 
+                                    onClick={handleDeleteElement}
+                                    className="px-3 py-1 text-sm rounded-md bg-red-100 hover:bg-red-200 text-red-700 font-medium"
+                                >
+                                    Delete Element
+                                </button>
+                            )}
+                        </div>
                         <div className="space-y-4">
                             <div>
                                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Label</label>
@@ -236,6 +314,7 @@ const OrganiserView: React.FC<OrganiserViewProps> = ({ initialElements, currentU
                                     value={selectedElement.label}
                                     disabled={!isEditable}
                                     onChange={(e) => handleLabelChange(e.target.value)}
+                                    onBlur={(e) => handleLabelChange(e.target.value)}
                                     className="w-full mt-1 p-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:ring-violet-500 focus:border-violet-500 disabled:bg-gray-700 disabled:cursor-not-allowed bg-transparent"
                                 />
                             </div>
@@ -251,6 +330,7 @@ const OrganiserView: React.FC<OrganiserViewProps> = ({ initialElements, currentU
                                         value={String(value)}
                                         disabled={!isEditable}
                                         onChange={(e) => handlePropertyChange(key, e.target.value)}
+                                        onBlur={(e) => handlePropertyChange(key, e.target.value)}
                                         className="w-full mt-1 p-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:ring-violet-500 focus:border-violet-500 disabled:bg-gray-700 disabled:cursor-not-allowed bg-transparent"
                                     />
                                 </div>

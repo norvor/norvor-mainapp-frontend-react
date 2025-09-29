@@ -12,9 +12,9 @@ if (!rootElement) {
 }
 
 const root = ReactDOM.createRoot(rootElement);
+
 root.render(
   <React.StrictMode>
-    {/* 3. Wrap your App component with the Provider */}
     <Provider store={store}>
       <App />
     </Provider>

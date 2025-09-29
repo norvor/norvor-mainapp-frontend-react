@@ -1,9 +1,9 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 // This function will be our central point for all API calls
 const apiClient = async (endpoint: string, options: RequestInit = {}) => {
   const token = localStorage.getItem('authToken');
-
+ 
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
     ...options.headers,
@@ -19,8 +19,8 @@ const apiClient = async (endpoint: string, options: RequestInit = {}) => {
     ...options,
     headers,
   };
-
   try {
+    console.log(`API Request: ${config.method} ${API_BASE_URL}${endpoint}`);
     const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
 
     if (!response.ok) {

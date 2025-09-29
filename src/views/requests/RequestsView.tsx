@@ -1,6 +1,9 @@
+// src/views/requests/RequestsView.tsx
 
-import React from 'react';
+import React, { useState } from 'react'; // <--- ADD useState
+import { useDispatch } from 'react-redux'; // <--- ADD useDispatch
 import { Ticket, TicketStatus, User } from '../../types';
+import { submitTicket } from '../../store/slices/ticketSlice'; // <--- IMPORT submitTicket THUNK
 
 const getStatusColor = (status: TicketStatus) => {
     switch (status) {
@@ -18,10 +21,50 @@ interface RequestsViewProps {
 }
 
 const RequestsView: React.FC<RequestsViewProps> = ({ teamId, tickets, allUsers, currentUser }) => {
+    const dispatch = useDispatch(); // <--- Initialize useDispatch
+    
+    // --- 1. Form State ---
+    const [formTitle, setFormTitle] = useState('');
+    const [formDescription, setFormDescription] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const getUserName = (userId: number) => {
         return allUsers.find(u => u.id === userId)?.name || 'Unknown User';
     };
+    
+    // --- 2. Submit Handler ---
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!formTitle.trim()) return;
+
+        setIsSubmitting(true);
+        
+        // Prepare the payload for the thunk
+        const newTicketPayload = {
+            title: formTitle,
+            description: formDescription.trim() || null,
+            submittedBy: currentUser.id,
+            teamId: teamId,
+            status: TicketStatus.OPEN, // Default status on creation (as per backend schema)
+        };
+        
+        try {
+            // Dispatch the thunk and unwrap the promise to handle success/failure
+            await dispatch(submitTicket(newTicketPayload)).unwrap();
+
+            // Clear the form on success
+            setFormTitle('');
+            setFormDescription('');
+            alert('Request submitted successfully!');
+
+        } catch (error) {
+            console.error('Failed to submit ticket:', error);
+            alert('Error submitting request. Please try again.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -52,17 +95,35 @@ const RequestsView: React.FC<RequestsViewProps> = ({ teamId, tickets, allUsers, 
             {/* New Ticket Form */}
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
                 <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">Submit a Request</h2>
-                <form className="space-y-4">
+                {/* 3. Link form to handleSubmit */}
+                <form className="space-y-4" onSubmit={handleSubmit}>
                     <div>
                         <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Title</label>
-                        <input type="text" id="title" className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-transparent rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500 sm:text-sm" />
+                        <input 
+                            type="text" 
+                            id="title" 
+                            value={formTitle}
+                            onChange={(e) => setFormTitle(e.target.value)}
+                            required
+                            className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-transparent rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500 sm:text-sm" 
+                        />
                     </div>
                     <div>
                         <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
-                        <textarea id="description" rows={5} className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-transparent rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500 sm:text-sm"></textarea>
+                        <textarea 
+                            id="description" 
+                            rows={5} 
+                            value={formDescription}
+                            onChange={(e) => setFormDescription(e.target.value)}
+                            className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-transparent rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500 sm:text-sm"
+                        ></textarea>
                     </div>
-                    <button type="button" className="w-full px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-md hover:bg-violet-700">
-                        Submit Request
+                    <button 
+                        type="submit" 
+                        disabled={isSubmitting || !formTitle.trim()} // Disable if submitting or title is empty
+                        className="w-full px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-md hover:bg-violet-700 disabled:bg-violet-400 disabled:cursor-not-allowed"
+                    >
+                        {isSubmitting ? 'Submitting...' : 'Submit Request'}
                     </button>
                 </form>
             </div>

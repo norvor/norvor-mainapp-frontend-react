@@ -1,15 +1,24 @@
+// src/views/crm/team/TeamCrmView.tsx
+
 import React, { useState, useMemo } from 'react';
+import { useDispatch } from 'react-redux'; // <-- ADD useDispatch
 import { User, Contact, Deal, Activity } from '../../../types';
 import DealKanban from '../../../components/crm/DealKanban';
 import apiClient from '../../../utils/apiClient';
 import ContactEditorModal from '../../../components/crm/ContactEditorModal';
+// --- Import Contact CRUD Thunks ---
+import { createContact, updateContact, deleteContact } from '../../../store/slices/contactSlice'; 
+// Note: refetchContacts prop will now be obsolete, as Redux state updates automatically.
+
 
 // --- Contact List View Component ---
+// (No changes here, remains the same)
 const ContactListView: React.FC<{
     contacts: Contact[];
     onSelectContact: (contact: Contact) => void;
     onEditContact: (contact: Contact) => void;
 }> = ({ contacts, onSelectContact, onEditContact }) => (
+// ... (ContactListView implementation is omitted for brevity, no changes needed)
     <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-700/50">
@@ -48,7 +57,9 @@ const ContactListView: React.FC<{
 
 
 // --- Contact Detail View Component ---
+// (No changes here, remains the same)
 const ContactDetailView: React.FC<{ contact: Contact; activities: Activity[]; onBack: () => void; }> = ({ contact, activities, onBack }) => (
+// ... (ContactDetailView implementation is omitted for brevity, no changes needed)
     <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 animate-fade-in">
         <button onClick={onBack} className="mb-4 text-sm font-medium text-violet-600 hover:underline">
             &larr; Back to Contact List
@@ -85,7 +96,7 @@ interface TeamCrmViewProps {
   contacts: Contact[];
   deals: Deal[];
   activities: Activity[];
-  refetchContacts: () => void;
+  refetchContacts: () => void; // This prop is now redundant but kept for type compatibility
 }
 
 type TeamViewTab = 'contacts' | 'deals';
@@ -95,6 +106,8 @@ const TeamCrmView: React.FC<TeamCrmViewProps> = ({ currentUser, contacts, deals,
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
+  
+  const dispatch = useDispatch(); // <--- Initialize dispatch
 
   const myContacts = useMemo(() => contacts.filter(c => c.ownerId === currentUser.id), [contacts, currentUser.id]);
   const myDeals = useMemo(() => deals.filter(d => d.ownerId === currentUser.id), [deals, currentUser.id]);
@@ -103,18 +116,31 @@ const TeamCrmView: React.FC<TeamCrmViewProps> = ({ currentUser, contacts, deals,
     return activities.filter(a => a.contactId === selectedContact.id);
   }, [activities, selectedContact]);
 
-  const handleSaveContact = async (contactData: Omit<Contact, 'id' | 'createdAt'>) => {
+  // --- REPLACED LOCAL API CALLS WITH REDUX DISPATCHES ---
+  const handleSaveContact = async (contactData: any) => {
     try {
       if (editingContact) {
-        await apiClient(`/crm/contacts/${editingContact.id}`, { method: 'PUT', body: JSON.stringify(contactData) });
+        // Update: Dispatch updateContact thunk
+        const contactToUpdate = { 
+            ...editingContact, 
+            ...contactData, 
+            ownerId: contactData.owner_id // Map form field to type property
+        } as Contact; 
+        await dispatch(updateContact(contactToUpdate as Contact)).unwrap();
       } else {
-        await apiClient('/crm/contacts/', { method: 'POST', body: JSON.stringify(contactData) });
+        // Create: Dispatch createContact thunk
+        const newContact = { 
+            ...contactData, 
+            ownerId: contactData.owner_id 
+        } as Omit<Contact, 'id' | 'createdAt'>;
+        await dispatch(createContact(newContact)).unwrap();
       }
-      await refetchContacts();
+      // Redux handles state update on success, so no manual fetch is needed
       setIsModalOpen(false);
       setEditingContact(null);
     } catch (error) {
       console.error("Failed to save contact:", error);
+      // More user-friendly error handling can be implemented here
       alert("Error: Could not save contact.");
     }
   };
@@ -122,8 +148,8 @@ const TeamCrmView: React.FC<TeamCrmViewProps> = ({ currentUser, contacts, deals,
   const handleDeleteContact = async (contactId: number) => {
     if (window.confirm("Are you sure you want to delete this contact? This action cannot be undone.")) {
         try {
-            await apiClient(`/crm/contacts/${contactId}`, { method: 'DELETE' });
-            await refetchContacts();
+            // Delete: Dispatch deleteContact thunk
+            await dispatch(deleteContact(contactId)).unwrap();
             setIsModalOpen(false);
             setEditingContact(null);
         } catch (error) {
@@ -134,6 +160,7 @@ const TeamCrmView: React.FC<TeamCrmViewProps> = ({ currentUser, contacts, deals,
   };
   
   const renderContent = () => {
+// ... (renderContent implementation is omitted for brevity, no changes needed)
     if (activeTab === 'contacts') {
       return selectedContact 
         ? <ContactDetailView contact={selectedContact} activities={contactActivities} onBack={() => setSelectedContact(null)} />
