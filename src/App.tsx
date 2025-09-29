@@ -90,8 +90,8 @@ const App: React.FC = () => {
     }
     console.log("Auth Token:", currentToken);
     if (!currentToken) {
-      window.location.href = 'http://localhost:3000/login';
-      //window.location.href = 'https://www.norvorx.com/login';
+      //window.location.href = 'http://localhost:3000/login';
+      window.location.href = 'https://www.norvorx.com/login';
       return;
     }
     dispatch(fetchCurrentUser());

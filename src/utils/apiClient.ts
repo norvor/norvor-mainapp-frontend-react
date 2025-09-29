@@ -30,8 +30,8 @@ const apiClient = async (endpoint: string, options: RequestInit = {}) => {
         localStorage.removeItem('authToken');
         // Redirect to the marketing site's login page
         // IMPORTANT: Replace with your deployed marketing URL in production
-        //window.location.href = 'https://www.norvorx.com/login'; 
-        window.location.href = 'http://localhost:3000/login'; 
+        window.location.href = 'https://www.norvorx.com/login'; 
+        //window.location.href = 'http://localhost:3000/login'; 
       }
       const errorData = await response.json();
       throw new Error(errorData.detail || 'An API error occurred');
