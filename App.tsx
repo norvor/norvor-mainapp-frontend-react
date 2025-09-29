@@ -30,7 +30,9 @@ const App: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
-  const [currentUser, setCurrentUser] = useState<User | null>(null); // Start with no user
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -45,43 +47,61 @@ const App: React.FC = () => {
   const [perspectives, setPerspectives] = useState<{[key in string]?: UserRole}>({});
 
   // --- DATA FETCHING LOGIC ---
+  const fetchData = useCallback(async () => {
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      window.location.href = 'http://localhost:3000/login'; 
+      return;
+    }
+
+    try {
+      // We set loading to true here to show a spinner on refetch
+      setIsLoading(true);
+      setError(null);
+
+      // Fetch all data in parallel for efficiency
+      const [
+        currentUserData, 
+        usersData, 
+        contactsData, 
+        dealsData,
+        projectsData,
+        tasksData
+      ] = await Promise.all([
+        apiClient('/users/me'),
+        apiClient('/users/'),
+        apiClient('/crm/contacts/'),
+        apiClient('/crm/deals/'),
+        apiClient('/pm/projects/'),
+        apiClient('/pm/tasks/')
+      ]);
+      
+      setCurrentUser(currentUserData);
+      setUsers(usersData);
+      setContacts(contactsData);
+      setDeals(dealsData);
+      setProjects(projectsData);
+      setTasks(tasksData);
+
+    } catch (err: any) {
+      setError(err.message || "Failed to fetch data");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []); // Empty dependency array ensures this function is created only once
+
   useEffect(() => {
-    const fetchAllData = async () => {
-      // ** ADD THIS CHECK **
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        // ** If no token, redirect to the marketing site's login page **
-        window.location.href = 'http://localhost:3000/login'; 
-        return;
-      }
+    const urlParams = new URLSearchParams(window.location.search);
+    const tokenFromUrl = urlParams.get('token');
 
-      try {
-        setIsLoading(true);
-        setError(null);
+    if (tokenFromUrl) {
+      localStorage.setItem('authToken', tokenFromUrl);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+    
+    fetchData();
+  }, [fetchData]);
 
-        // In a real app, you would have a /users/me endpoint to get the current user
-        // For now, we fetch all users and set an executive as the current user
-        const usersData = await apiClient('/users/');
-        const contactsData = await apiClient('/crm/contacts/');
-        const dealsData = await apiClient('/crm/deals/');
-        
-        setUsers(usersData);
-        setContacts(contactsData);
-        setDeals(dealsData);
-
-        // Find and set the current user AFTER data is fetched
-        const executiveUser = usersData.find((u: User) => u.role === UserRole.EXECUTIVE);
-        setCurrentUser(executiveUser || usersData[0] || null);
-
-      } catch (err: any) {
-        setError(err.message || "Failed to fetch data");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchAllData();
-  }, []);
 
   const handleResize = useCallback(() => {
     if (window.innerWidth < 1024) {
@@ -112,7 +132,6 @@ const App: React.FC = () => {
 
   const activeTeamMembers = useMemo(() => {
     if (activeView.type !== 'team') return [];
-    // Fix: Ensure teamIds is treated as an array from JSON
     return users.filter(u => Array.isArray(u.teamIds) && u.teamIds.includes(activeView.id));
   }, [activeView, users]);
 
@@ -132,8 +151,6 @@ const App: React.FC = () => {
   const teamTickets = [] as Ticket[]; 
   const timeOffRequests = [] as TimeOffRequest[];
   const organiserElements = [] as OrganiserElement[];
-  const projects = [] as Project[];
-  const tasks = [] as Task[];
   const activities = [] as Activity[];
 
   const handleNavigate = (newView: ActiveView) => {
@@ -144,7 +161,6 @@ const App: React.FC = () => {
   }
 
   // --- RENDER LOGIC ---
-  // Don't try to render anything until we have a current user
   if (isLoading || !currentUser) {
     return <div className="p-8 bg-gray-100 dark:bg-slate-900 text-gray-800 dark:text-gray-200 h-screen">Loading Application...</div>;
   }
@@ -183,6 +199,15 @@ const App: React.FC = () => {
           unassignedContacts={unassignedContacts}
           allTeamContacts={allTeamContacts}
           allTeamDeals={allTeamDeals}
+          refetchData={fetchData} // Pass the refetch function here
+        />;
+       case 'pm':
+        return <PmView 
+          viewingUser={contextualUser}
+          allUsers={users}
+          projects={projects}
+          tasks={tasks}
+          teamMembers={activeTeamMembers}
         />;
       // ... other cases will be updated later
       default:
