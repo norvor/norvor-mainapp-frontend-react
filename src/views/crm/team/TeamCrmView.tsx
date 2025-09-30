@@ -1,23 +1,18 @@
-// src/views/crm/team/TeamCrmView.tsx
-
-import React, { useState, useMemo, useCallback } from 'react'; // ADD useCallback
+import React, { useState, useMemo } from 'react';
 import { useDispatch } from 'react-redux';
-import { User, Contact, Deal, Activity, ActivityType } from '../../../types'; // IMPORT ActivityType
+import { User, Contact, Deal, Activity, ActivityType } from '../../../types';
 import DealKanban from '../../../components/crm/DealKanban';
-import apiClient from '../../../utils/apiClient';
 import ContactEditorModal from '../../../components/crm/ContactEditorModal';
 import { createContact, updateContact, deleteContact } from '../../../store/slices/contactSlice';
-import { logActivity } from '../../../store/slices/activitySlice'; // Note: refetchContacts prop will now be obsolete, as Redux state updates automatically.
-
+import { logActivity } from '../../../store/slices/activitySlice';
+import DealEditorModal from '../../../components/crm/DealEditorModal'; // Import the new modal
 
 // --- Contact List View Component ---
-// (No changes here, remains the same)
 const ContactListView: React.FC<{
     contacts: Contact[];
     onSelectContact: (contact: Contact) => void;
     onEditContact: (contact: Contact) => void;
 }> = ({ contacts, onSelectContact, onEditContact }) => (
-// ... (ContactListView implementation is omitted for brevity, no changes needed)
     <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-700/50">
@@ -56,7 +51,6 @@ const ContactListView: React.FC<{
 
 
 // --- Contact Detail View Component ---
-// (No changes here, remains the same)
 const ContactDetailView: React.FC<{ contact: Contact; activities: Activity[]; currentUser: User; onBack: () => void; }> = ({ contact, activities, currentUser, onBack }) => {
     const dispatch = useDispatch();
     const [notes, setNotes] = useState('');
@@ -69,19 +63,16 @@ const ContactDetailView: React.FC<{ contact: Contact; activities: Activity[]; cu
 
         setIsLogging(true);
         
-        // Construct the payload for the logActivity thunk
         const newActivityPayload: Omit<Activity, 'id'> = {
             type: activityType,
             notes: notes.trim(),
-            date: new Date().toISOString().split('T')[0], // Current date
+            date: new Date().toISOString().split('T')[0],
             contactId: contact.id,
             userId: currentUser.id,
         };
         
         try {
             await dispatch(logActivity(newActivityPayload)).unwrap();
-            
-            // Clear the form on success
             setNotes('');
             alert('Activity logged successfully!');
 
@@ -116,7 +107,6 @@ const ContactDetailView: React.FC<{ contact: Contact; activities: Activity[]; cu
                      {activities.length === 0 && <p className="text-sm text-gray-500">No activities logged for this contact yet.</p>}
                 </div>
                 
-                {/* --- Activity Logging Form --- */}
                 <form className="mt-4 border-t dark:border-gray-700 pt-4" onSubmit={handleSubmitActivity}>
                     <select
                         value={activityType}
@@ -155,7 +145,7 @@ interface TeamCrmViewProps {
   contacts: Contact[];
   deals: Deal[];
   activities: Activity[];
-  refetchContacts: () => void; // This prop is now redundant but kept for type compatibility
+  refetchContacts: () => void;
 }
 
 type TeamViewTab = 'contacts' | 'deals';
@@ -163,10 +153,14 @@ type TeamViewTab = 'contacts' | 'deals';
 const TeamCrmView: React.FC<TeamCrmViewProps> = ({ currentUser, contacts, deals, activities, refetchContacts }) => {
   const [activeTab, setActiveTab] = useState<TeamViewTab>('contacts');
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingContact, setEditingContact] = useState<Contact | null>(null);
   
-  const dispatch = useDispatch(); // <--- Initialize dispatch
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+  const [editingContact, setEditingContact] = useState<Contact | null>(null);
+
+  const [isDealModalOpen, setIsDealModalOpen] = useState(false);
+  const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
+  
+  const dispatch = useDispatch();
 
   const myContacts = useMemo(() => contacts.filter(c => c.ownerId === currentUser.id), [contacts, currentUser.id]);
   const myDeals = useMemo(() => deals.filter(d => d.ownerId === currentUser.id), [deals, currentUser.id]);
@@ -175,31 +169,19 @@ const TeamCrmView: React.FC<TeamCrmViewProps> = ({ currentUser, contacts, deals,
     return activities.filter(a => a.contactId === selectedContact.id);
   }, [activities, selectedContact]);
 
-  // --- REPLACED LOCAL API CALLS WITH REDUX DISPATCHES ---
   const handleSaveContact = async (contactData: any) => {
     try {
       if (editingContact) {
-        // Update: Dispatch updateContact thunk
-        const contactToUpdate = { 
-            ...editingContact, 
-            ...contactData, 
-            ownerId: contactData.owner_id // Map form field to type property
-        } as Contact; 
+        const contactToUpdate = { ...editingContact, ...contactData, ownerId: contactData.owner_id } as Contact; 
         await dispatch(updateContact(contactToUpdate as Contact)).unwrap();
       } else {
-        // Create: Dispatch createContact thunk
-        const newContact = { 
-            ...contactData, 
-            ownerId: contactData.owner_id 
-        } as Omit<Contact, 'id' | 'createdAt'>;
+        const newContact = { ...contactData, ownerId: contactData.owner_id } as Omit<Contact, 'id' | 'createdAt'>;
         await dispatch(createContact(newContact)).unwrap();
       }
-      // Redux handles state update on success, so no manual fetch is needed
-      setIsModalOpen(false);
+      setIsContactModalOpen(false);
       setEditingContact(null);
     } catch (error) {
       console.error("Failed to save contact:", error);
-      // More user-friendly error handling can be implemented here
       alert("Error: Could not save contact.");
     }
   };
@@ -207,9 +189,8 @@ const TeamCrmView: React.FC<TeamCrmViewProps> = ({ currentUser, contacts, deals,
   const handleDeleteContact = async (contactId: number) => {
     if (window.confirm("Are you sure you want to delete this contact? This action cannot be undone.")) {
         try {
-            // Delete: Dispatch deleteContact thunk
             await dispatch(deleteContact(contactId)).unwrap();
-            setIsModalOpen(false);
+            setIsContactModalOpen(false);
             setEditingContact(null);
         } catch (error) {
             console.error("Failed to delete contact:", error);
@@ -217,27 +198,33 @@ const TeamCrmView: React.FC<TeamCrmViewProps> = ({ currentUser, contacts, deals,
         }
     }
   };
+
+  const handleSaveDeal = async (dealData: any) => {
+    // Placeholder for Redux action
+    console.log("Saving Deal:", dealData);
+    alert("Deal saving functionality will be added in the next step.");
+    setIsDealModalOpen(false);
+    setEditingDeal(null);
+  };
   
   const renderContent = () => {
-// ... (renderContent implementation is omitted for brevity, no changes needed)
     if (activeTab === 'contacts') {
       return selectedContact 
         ? <ContactDetailView 
             contact={selectedContact} 
             activities={contactActivities} 
-            currentUser={currentUser} // <--- PASS THE CURRENT USER HERE
+            currentUser={currentUser}
             onBack={() => setSelectedContact(null)} 
           />
           : <ContactListView 
             contacts={myContacts} 
             onSelectContact={setSelectedContact}
-            onEditContact={(contact) => { setEditingContact(contact); setIsModalOpen(true); }}
+            onEditContact={(contact) => { setEditingContact(contact); setIsContactModalOpen(true); }}
           />;
     }
     if (activeTab === 'deals') {
       return (
         <div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">My Deal Kanban</h2>
             <DealKanban deals={myDeals} />
         </div>
       );
@@ -247,13 +234,24 @@ const TeamCrmView: React.FC<TeamCrmViewProps> = ({ currentUser, contacts, deals,
 
   return (
     <div>
-      {isModalOpen && (
+      {isContactModalOpen && (
         <ContactEditorModal 
             contact={editingContact}
             currentUser={currentUser}
-            onClose={() => { setIsModalOpen(false); setEditingContact(null); }}
+            onClose={() => { setIsContactModalOpen(false); setEditingContact(null); }}
             onSave={handleSaveContact}
             onDelete={handleDeleteContact}
+        />
+      )}
+
+      {isDealModalOpen && (
+        <DealEditorModal
+          deal={editingDeal}
+          contacts={myContacts}
+          currentUser={currentUser}
+          onClose={() => { setIsDealModalOpen(false); setEditingDeal(null); }}
+          onSave={handleSaveDeal}
+          // onDelete will be wired up later
         />
       )}
       
@@ -268,13 +266,18 @@ const TeamCrmView: React.FC<TeamCrmViewProps> = ({ currentUser, contacts, deals,
             </button>
             </nav>
         </div>
-        {activeTab === 'contacts' && !selectedContact && (
-            <div className="mt-3 sm:mt-0 sm:ml-4">
-                <button onClick={() => { setEditingContact(null); setIsModalOpen(true); }} className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-violet-600 hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500">
+        <div className="mt-3 sm:mt-0 sm:ml-4 flex space-x-2">
+            {activeTab === 'contacts' && !selectedContact && (
+                <button onClick={() => { setEditingContact(null); setIsContactModalOpen(true); }} className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-violet-600 hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500">
                     + Create Contact
                 </button>
-            </div>
-        )}
+            )}
+            {activeTab === 'deals' && (
+                <button onClick={() => { setEditingDeal(null); setIsDealModalOpen(true); }} className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-violet-600 hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500">
+                    + Create Deal
+                </button>
+            )}
+        </div>
       </div>
 
       {renderContent()}
