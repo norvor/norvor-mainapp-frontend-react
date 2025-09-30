@@ -2,11 +2,8 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../../store/store';
 import { OrganiserElement, OrganiserElementType, User, UserRole } from '../../types';
-// --- NEW IMPORTS ---
 import SearchIcon from '../../components/icons/SearchIcon';
 import TrashIcon from '../../components/icons/TrashIcon';
-import PlusIcon from '../../components/icons/PlusIcon'; // Assuming a generic PlusIcon exists, or using an SVG directly
-// -------------------
 
 // Icons
 import DepartmentIcon from '../../components/icons/DepartmentIcon';
@@ -15,6 +12,8 @@ import SoftwareIcon from '../../components/icons/SoftwareIcon';
 import CrmIcon from '../../components/icons/CrmIcon';
 import PmIcon from '../../components/icons/PmIcon';
 import DocsIcon from '../../components/icons/DocsIcon';
+import HrIcon from '../../components/icons/HrIcon';
+import DataLabsIcon from '../../components/icons/DataLabsIcon';
 
 
 import { 
@@ -29,25 +28,25 @@ interface TreeNode extends OrganiserElement {
     children: TreeNode[];
 }
 
-// --- NEW LOCAL TYPE FOR MEMBER MANAGEMENT ---
 interface TeamMember {
     userId: string;
-    teamRole: string; // e.g., 'Team Lead', 'Scrum Master'
-    teamDesignation: string; // e.g., 'Senior Dev', 'Sales Executive'
+    teamRole: string; 
+    teamDesignation: string; 
 }
-// ------------------------------------------
 
 const ELEMENT_ICONS: Record<string, React.FC<{className?: string}>> = {
     [OrganiserElementType.DEPARTMENT]: DepartmentIcon,
     [OrganiserElementType.TEAM]: TeamIcon,
     [OrganiserElementType.SOFTWARE]: SoftwareIcon,
-    [OrganiserElementType.NORVOR_TOOL]: DocsIcon, // Default icon
+    [OrganiserElementType.NORVOR_TOOL]: DocsIcon, 
 };
 
 const NORVOR_TOOL_DEFINITIONS = [
     { id: 'crm', label: 'CRM', icon: CrmIcon },
     { id: 'pm', label: 'Projects', icon: PmIcon },
     { id: 'docs', label: 'Library', icon: DocsIcon },
+    { id: 'hr', label: 'HR', icon: HrIcon },
+    { id: 'datalabs', label: 'Data Labs', icon: DataLabsIcon },
 ];
 
 const TreeItem: React.FC<{
@@ -104,7 +103,6 @@ const TreeItem: React.FC<{
     );
 };
 
-// --- NEW MEMBER MANAGEMENT COMPONENT ---
 const MemberManagement: React.FC<{
     element: OrganiserElement;
     allUsers: User[];
@@ -115,13 +113,10 @@ const MemberManagement: React.FC<{
     const [teamRole, setTeamRole] = useState('');
     const [teamDesignation, setTeamDesignation] = useState('');
     
-    // Ensure 'members' exists and is an array
     const currentMembers: TeamMember[] = useMemo(() => element.properties.members || [], [element.properties.members]);
     
-    // Map of user IDs currently in the team for quick lookup
     const memberIdMap = useMemo(() => new Set(currentMembers.map(m => m.userId)), [currentMembers]);
 
-    // Filter users not already in the team based on search term
     const availableUsers = useMemo(() => {
         if (!searchTerm) return [];
         return allUsers
@@ -180,7 +175,6 @@ const MemberManagement: React.FC<{
         <div className="mt-8 border-t dark:border-gray-700 pt-6">
             <h4 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">Team Members ({currentMembers.length})</h4>
 
-            {/* Add Member Section */}
             {isEditable && (
                 <div className="border p-4 rounded-lg space-y-3 mb-6 bg-gray-50 dark:bg-slate-700/50">
                     <h5 className="font-semibold text-gray-700 dark:text-gray-200">Add Employee</h5>
@@ -194,7 +188,6 @@ const MemberManagement: React.FC<{
                             className="w-full p-2 pl-10 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:ring-violet-500 focus:border-violet-500 bg-transparent"
                         />
                     </div>
-                    {/* Search Results / Add Form */}
                     {searchTerm && (
                         <div className="space-y-2 max-h-48 overflow-y-auto">
                             {availableUsers.length > 0 ? (
@@ -237,12 +230,11 @@ const MemberManagement: React.FC<{
                 </div>
             )}
             
-            {/* Current Members List */}
             <div className="space-y-3">
                 {currentMembers.length > 0 ? (
                     currentMembers.map(member => {
                         const memberData = getMemberDetails(member.userId);
-                        if (!memberData) return null; // Should not happen with valid data
+                        if (!memberData) return null;
                         
                         return (
                             <div key={member.userId} className="p-3 border dark:border-gray-700 rounded-lg flex justify-between items-center bg-white dark:bg-gray-800">
@@ -270,12 +262,10 @@ const MemberManagement: React.FC<{
         </div>
     );
 };
-// --- END NEW COMPONENT ---
 
 
 const OrganiserView: React.FC<OrganiserViewProps> = () => {
     const dispatch: AppDispatch = useDispatch();
-    // --- MODIFIED SELECTOR: Get all users ---
     const { currentUser, users: allUsers } = useSelector((state: RootState) => state.users);
     const { organiserElements: elements } = useSelector((state: RootState) => state.organiserElements);
     
@@ -307,12 +297,10 @@ const OrganiserView: React.FC<OrganiserViewProps> = () => {
         setSelectedElementId(elementId);
     };
     
-    // --- Consolidated Save Handler ---
     const handleUpdateElement = useCallback(async (updatedElement: OrganiserElement) => {
         if (!isEditable) return;
          await dispatch(updateOrganiserElement(updatedElement));
     }, [dispatch, isEditable]);
-    // ---------------------------------
 
     const handleUpdateLabel = async (e: React.FocusEvent<HTMLInputElement>) => {
         if (!selectedElement || !isEditable || selectedElement.label === e.target.value) return;
@@ -326,7 +314,6 @@ const OrganiserView: React.FC<OrganiserViewProps> = () => {
             type,
             label,
             parentId: selectedElementId,
-            // Initialize members array for Dept/Team types
             properties: (type === OrganiserElementType.DEPARTMENT || type === OrganiserElementType.TEAM) ? { members: [], ...properties } : properties
         };
         await dispatch(createOrganiserElement(newElement));
@@ -340,7 +327,45 @@ const OrganiserView: React.FC<OrganiserViewProps> = () => {
         }
     };
     
-    // Check if the selected element is a type that should manage members
+    const handleMakeHrDepartment = async () => {
+        if (!selectedElement || !isEditable) return;
+
+        const updatedDept: OrganiserElement = {
+            ...selectedElement,
+            properties: { ...selectedElement.properties, isHrDept: true }
+        };
+        await dispatch(updateOrganiserElement(updatedDept));
+
+        const newTeamAction = await dispatch(createOrganiserElement({
+            type: OrganiserElementType.TEAM,
+            label: 'Human Resources',
+            parentId: selectedElement.id,
+            properties: { members: [] }
+        }));
+        const newTeam = newTeamAction.payload as OrganiserElement;
+        
+        if (!newTeam || !newTeam.id) {
+            console.error("Failed to create the Human Resources team.");
+            return;
+        }
+
+        const toolsToCreate = [
+            { id: 'hr', label: 'HR' },
+            { id: 'datalabs', label: 'Data Labs' },
+            { id: 'pm', label: 'Projects' },
+            { id: 'docs', label: 'Library' }
+        ];
+
+        for (const tool of toolsToCreate) {
+            await dispatch(createOrganiserElement({
+                type: OrganiserElementType.NORVOR_TOOL,
+                label: tool.label,
+                parentId: newTeam.id,
+                properties: { tool_id: tool.id }
+            }));
+        }
+    };
+
     const isMemberManagedType = selectedElement && (selectedElement.type === OrganiserElementType.DEPARTMENT || selectedElement.type === OrganiserElementType.TEAM);
 
     return (
@@ -374,7 +399,7 @@ const OrganiserView: React.FC<OrganiserViewProps> = () => {
                                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Label</label>
                                 <input
                                     type="text"
-                                    key={selectedElement.id} // Re-mount input on selection change
+                                    key={selectedElement.id}
                                     defaultValue={selectedElement.label}
                                     disabled={!isEditable}
                                     onBlur={handleUpdateLabel}
@@ -382,8 +407,28 @@ const OrganiserView: React.FC<OrganiserViewProps> = () => {
                                 />
                             </div>
                         </div>
+
+                        {selectedElement.type === OrganiserElementType.DEPARTMENT && isEditable && (
+                            <div className="mt-6 border-t dark:border-gray-700 pt-6">
+                                <h4 className="font-semibold mb-2">Special Actions</h4>
+                                <button
+                                    onClick={handleMakeHrDepartment}
+                                    disabled={
+                                        elements.some(el => el.parentId === selectedElement.id) || 
+                                        selectedElement.properties.isHrDept
+                                    }
+                                    className="w-full px-4 py-2 text-sm rounded-md bg-sky-100 hover:bg-sky-200 text-sky-800 font-medium disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed dark:bg-sky-900/50 dark:text-sky-200 dark:hover:bg-sky-900"
+                                >
+                                    Make this the HR Department
+                                </button>
+                                {(elements.some(el => el.parentId === selectedElement.id) || selectedElement.properties.isHrDept) && (
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                                        This option is disabled because the department already contains teams or is already designated as the HR department.
+                                    </p>
+                                )}
+                            </div>
+                        )}
                         
-                        {/* --- NEW MEMBER MANAGEMENT INTEGRATION --- */}
                         {isMemberManagedType && (
                             <MemberManagement 
                                 element={selectedElement}
@@ -392,7 +437,6 @@ const OrganiserView: React.FC<OrganiserViewProps> = () => {
                                 onSave={handleUpdateElement}
                             />
                         )}
-                        {/* ----------------------------------------- */}
 
                         {isEditable && (selectedElement.type === OrganiserElementType.TEAM || selectedElement.type === OrganiserElementType.DEPARTMENT) && (
                             <div className="mt-8 border-t dark:border-gray-700 pt-6">

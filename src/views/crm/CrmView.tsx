@@ -1,32 +1,53 @@
 import React from 'react';
+import { useLocation } from 'react-router-dom';
 import { User, Contact, Deal, Activity, UserRole } from '../../types';
 import TeamCrmView from './team/TeamCrmView';
 import ManagementCrmView from './management/ManagementCrmView';
 import ExecutiveCrmView from './executive/ExecutiveCrmView';
+import ToolDashboardView from '../tools/ToolDashboardView';
 
 interface CrmViewProps {
   viewingUser: User;
   teamMembers: User[];
+  allUsers: User[]; // Add allUsers to props
   contacts: Contact[];
   deals: Deal[];
   activities: Activity[];
   unassignedContacts: Contact[];
   allTeamContacts: Contact[];
   allTeamDeals: Deal[];
-  refetchData: () => void; // Add this line to accept the function
+  refetchData: () => void;
 }
 
-const CrmView: React.FC<CrmViewProps> = ({ 
-  viewingUser, 
-  teamMembers, 
-  contacts, 
-  deals, 
-  activities, 
-  unassignedContacts, 
-  allTeamContacts, 
-  allTeamDeals, 
-  refetchData // Destructure the prop
-}) => {
+const CrmView: React.FC<CrmViewProps> = (props) => {
+  const location = useLocation();
+  const urlParams = new URLSearchParams(location.search);
+  const forcedView = urlParams.get('view');
+
+  if (!forcedView) {
+    return (
+      <ToolDashboardView
+        toolId="crm"
+        projects={[]}
+        tasks={[]}
+        users={props.allUsers}
+        currentUser={props.viewingUser}
+      />
+    );
+  }
+  
+  const { 
+    viewingUser, 
+    teamMembers, 
+    contacts, 
+    deals, 
+    activities, 
+    unassignedContacts, 
+    allTeamContacts, 
+    allTeamDeals, 
+    refetchData 
+  } = props;
+
   switch (viewingUser.role) {
     case UserRole.TEAM:
       return <TeamCrmView 
@@ -34,7 +55,7 @@ const CrmView: React.FC<CrmViewProps> = ({
                 contacts={contacts} 
                 deals={deals} 
                 activities={activities} 
-                refetchContacts={refetchData} // Pass it down to TeamCrmView
+                refetchContacts={refetchData}
              />;
     case UserRole.MANAGEMENT:
       return <ManagementCrmView 

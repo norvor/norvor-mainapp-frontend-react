@@ -1,9 +1,10 @@
-
 import React from 'react';
+import { useLocation } from 'react-router-dom';
 import { User, UserRole, TimeOffRequest } from '../../types';
 import TeamHrView from './team/TeamHrView';
 import ManagementHrView from './management/ManagementHrView';
 import ExecutiveHrView from './executive/ExecutiveHrView';
+import ToolDashboardView from '../tools/ToolDashboardView';
 
 interface HrViewProps {
   viewingUser: User;
@@ -13,6 +14,22 @@ interface HrViewProps {
 }
 
 const HrView: React.FC<HrViewProps> = (props) => {
+  const location = useLocation();
+  const urlParams = new URLSearchParams(location.search);
+  const forcedView = urlParams.get('view');
+
+  if (!forcedView) {
+    return (
+      <ToolDashboardView
+        toolId="hr"
+        projects={[]}
+        tasks={[]}
+        users={props.allUsers}
+        currentUser={props.viewingUser}
+      />
+    );
+  }
+
   switch (props.viewingUser.role) {
     case UserRole.TEAM:
       return <TeamHrView 
