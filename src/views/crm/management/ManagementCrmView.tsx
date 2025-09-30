@@ -1,12 +1,13 @@
 import React, { useState, useMemo } from 'react';
-import { User, Contact, Deal, Activity } from '../../../types';
+import { useDispatch } from 'react-redux';
+import { AppDispatch } from '../../../store/store';
+import { updateContact } from '../../../store/slices/contactSlice';
+import { User, Contact, Deal } from '../../../types';
 import DealKanban from '../../../components/crm/DealKanban';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-// Sub-components defined within the same file
-
 const TeamPipelineView: React.FC<{teamMembers: User[], allTeamDeals: Deal[]}> = ({ teamMembers, allTeamDeals }) => {
-    const [selectedMemberId, setSelectedMemberId] = useState<number | null>(teamMembers.length > 0 ? teamMembers[0].id : null);
+    const [selectedMemberId, setSelectedMemberId] = useState<string | null>(teamMembers.length > 0 ? teamMembers[0].id : null);
 
     const selectedMemberDeals = useMemo(() => {
         if (!selectedMemberId) return [];
@@ -21,17 +22,21 @@ const TeamPipelineView: React.FC<{teamMembers: User[], allTeamDeals: Deal[]}> = 
                     id="team-member-select"
                     className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:outline-none focus:ring-violet-500 focus:border-violet-500 sm:text-sm rounded-md"
                     value={selectedMemberId || ''}
-                    onChange={e => setSelectedMemberId(Number(e.target.value))}
+                    onChange={e => setSelectedMemberId(e.target.value)}
                 >
                     {teamMembers.map(member => <option key={member.id} value={member.id}>{member.name}</option>)}
                 </select>
             </div>
-            {selectedMemberId ? <DealKanban deals={selectedMemberDeals} /> : <p>Please select a team member.</p>}
+            {selectedMemberId ? <DealKanban deals={selectedMemberDeals} onDealClick={() => {}}/> : <p>Please select a team member.</p>}
         </div>
     );
 };
 
-const LeadAssignmentView: React.FC<{unassignedContacts: Contact[], teamMembers: User[]}> = ({ unassignedContacts, teamMembers }) => (
+const LeadAssignmentView: React.FC<{
+  unassignedContacts: Contact[], 
+  teamMembers: User[],
+  onAssignContact: (contactId: number, ownerId: string | null) => void 
+}> = ({ unassignedContacts, teamMembers, onAssignContact }) => (
     <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-700/50">
@@ -47,8 +52,12 @@ const LeadAssignmentView: React.FC<{unassignedContacts: Contact[], teamMembers: 
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">{contact.name}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{contact.company}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                            <select className="border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-md text-sm">
-                                <option>Unassigned</option>
+                            <select 
+                                value={contact.ownerId || ''}
+                                onChange={(e) => onAssignContact(contact.id, e.target.value || null)}
+                                className="border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-md text-sm"
+                            >
+                                <option value="">Unassigned</option>
                                 {teamMembers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                             </select>
                         </td>
@@ -59,13 +68,12 @@ const LeadAssignmentView: React.FC<{unassignedContacts: Contact[], teamMembers: 
     </div>
 );
 
-
 const TeamDashboardView: React.FC<{teamMembers: User[], allTeamDeals: Deal[]}> = ({ teamMembers, allTeamDeals }) => {
     const chartData = useMemo(() => {
         return teamMembers.map(member => {
             const memberDeals = allTeamDeals.filter(d => d.ownerId === member.id);
             return {
-                name: member.name.split(' ')[0], // First name
+                name: member.name.split(' ')[0],
                 dealsWon: memberDeals.filter(d => d.stage === 'Won').length,
                 totalDeals: memberDeals.length
             };
@@ -91,7 +99,6 @@ const TeamDashboardView: React.FC<{teamMembers: User[], allTeamDeals: Deal[]}> =
     );
 };
 
-// Main Management View Component
 interface ManagementCrmViewProps {
   currentUser: User;
   teamMembers: User[];
@@ -104,11 +111,24 @@ type ManagementViewTab = 'pipeline' | 'assignment' | 'dashboard';
 
 const ManagementCrmView: React.FC<ManagementCrmViewProps> = (props) => {
   const [activeTab, setActiveTab] = useState<ManagementViewTab>('pipeline');
+  const dispatch: AppDispatch = useDispatch();
+
+  const handleAssignContact = async (contactId: number, ownerId: string | null) => {
+    const contactToUpdate = props.allTeamContacts.find(c => c.id === contactId);
+    if (contactToUpdate) {
+        try {
+            await dispatch(updateContact({ ...contactToUpdate, ownerId })).unwrap();
+        } catch (error) {
+            console.error("Failed to assign contact:", error);
+            alert("Error: Could not assign contact.");
+        }
+    }
+  };
 
   const renderContent = () => {
     switch(activeTab) {
         case 'pipeline': return <TeamPipelineView teamMembers={props.teamMembers} allTeamDeals={props.allTeamDeals} />;
-        case 'assignment': return <LeadAssignmentView unassignedContacts={props.unassignedContacts} teamMembers={props.teamMembers} />;
+        case 'assignment': return <LeadAssignmentView unassignedContacts={props.unassignedContacts} teamMembers={props.teamMembers} onAssignContact={handleAssignContact} />;
         case 'dashboard': return <TeamDashboardView teamMembers={props.teamMembers} allTeamDeals={props.allTeamDeals} />;
         default: return null;
     }

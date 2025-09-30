@@ -1,45 +1,65 @@
-// src/store/slices/contactSlice.ts
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import apiClient from '../../utils/apiClient';
 import { Contact } from '../../types';
 
-// 1. Define the shape of our contact state
+// Helper function to map backend snake_case to frontend camelCase
+const toFrontendContact = (backendContact: any): Contact => ({
+    id: backendContact.id,
+    name: backendContact.name,
+    company: backendContact.company,
+    email: backendContact.email,
+    phone: backendContact.phone,
+    ownerId: backendContact.owner_id,
+    createdAt: backendContact.created_at,
+});
+
 interface ContactState {
   contacts: Contact[];
   loading: boolean;
   error: string | null;
 }
 
-// 2. Set the initial state
 const initialState: ContactState = {
   contacts: [],
   loading: false,
   error: null,
 };
 
-// 3. Create async thunks for all API operations
 export const fetchContacts = createAsyncThunk('contacts/fetchContacts', async () => {
   const response = await apiClient('/crm/contacts/');
-  return response as Contact[];
+  return (response as any[]).map(toFrontendContact);
 });
 
 export const createContact = createAsyncThunk('contacts/createContact', async (contactData: Omit<Contact, 'id' | 'createdAt'>) => {
-    const response = await apiClient('/crm/contacts/', { method: 'POST', body: JSON.stringify(contactData) });
-    return response as Contact;
+    const payload = {
+      name: contactData.name,
+      company: contactData.company,
+      email: contactData.email,
+      phone: contactData.phone,
+      owner_id: contactData.ownerId,
+    };
+    const response = await apiClient('/crm/contacts/', { method: 'POST', body: JSON.stringify(payload) });
+    return toFrontendContact(response);
 });
 
 export const updateContact = createAsyncThunk('contacts/updateContact', async (contact: Contact) => {
-    const response = await apiClient(`/crm/contacts/${contact.id}`, { method: 'PUT', body: JSON.stringify(contact) });
-    return response as Contact;
+    const payload = {
+      name: contact.name,
+      company: contact.company,
+      email: contact.email,
+      phone: contact.phone,
+      owner_id: contact.ownerId,
+    };
+    const response = await apiClient(`/crm/contacts/${contact.id}`, { method: 'PUT', body: JSON.stringify(payload) });
+    return toFrontendContact(response);
 });
 
 export const deleteContact = createAsyncThunk('contacts/deleteContact', async (contactId: number) => {
     await apiClient(`/crm/contacts/${contactId}`, { method: 'DELETE' });
-    return contactId; // Return the id to know which contact to remove from state
+    return contactId;
 });
 
 
-// 4. Create the slice and handle state changes
 const contactSlice = createSlice({
   name: 'contacts',
   initialState,
@@ -61,18 +81,18 @@ const contactSlice = createSlice({
       })
       // Creating a Contact
       .addCase(createContact.fulfilled, (state, action: PayloadAction<Contact>) => {
-        state.contacts.push(action.payload); // Add the new contact to our state
+        state.contacts.push(action.payload);
       })
       // Updating a Contact
       .addCase(updateContact.fulfilled, (state, action: PayloadAction<Contact>) => {
         const index = state.contacts.findIndex(c => c.id === action.payload.id);
         if (index !== -1) {
-          state.contacts[index] = action.payload; // Update the contact in our state
+          state.contacts[index] = action.payload;
         }
       })
       // Deleting a Contact
       .addCase(deleteContact.fulfilled, (state, action: PayloadAction<number>) => {
-        state.contacts = state.contacts.filter(c => c.id !== action.payload); // Remove the contact
+        state.contacts = state.contacts.filter(c => c.id !== action.payload);
       });
   },
 });

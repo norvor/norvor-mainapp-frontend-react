@@ -174,8 +174,8 @@ const App: React.FC = () => {
         window.history.replaceState({}, document.title, window.location.pathname);
         }
         if (!currentToken) {
-        //window.location.href = 'http://localhost:3000/login';
-        window.location.href = 'https://www.norvorx.com/login';
+        window.location.href = 'http://localhost:3000/login';
+        //window.location.href = 'https://www.norvorx.com/login';
         return;
         }
         dispatch(fetchSidebarConfig());

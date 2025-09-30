@@ -1,13 +1,16 @@
 import React, { useState, useMemo } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState, AppDispatch } from '../../../store/store';
 import { User, Contact, Deal, Activity, ActivityType } from '../../../types';
 import DealKanban from '../../../components/crm/DealKanban';
 import ContactEditorModal from '../../../components/crm/ContactEditorModal';
+import DealListView from '../../../components/crm/DealListView';
 import { createContact, updateContact, deleteContact } from '../../../store/slices/contactSlice';
 import { logActivity } from '../../../store/slices/activitySlice';
-import DealEditorModal from '../../../components/crm/DealEditorModal'; // Import the new modal
+import DealEditorModal from '../../../components/crm/DealEditorModal';
+import { createDeal, updateDeal, deleteDeal } from '../../../store/slices/dealSlice';
 
-// --- Contact List View Component ---
+// --- ContactListView and ContactDetailView components remain unchanged ---
 const ContactListView: React.FC<{
     contacts: Contact[];
     onSelectContact: (contact: Contact) => void;
@@ -49,8 +52,6 @@ const ContactListView: React.FC<{
     </div>
 );
 
-
-// --- Contact Detail View Component ---
 const ContactDetailView: React.FC<{ contact: Contact; activities: Activity[]; currentUser: User; onBack: () => void; }> = ({ contact, activities, currentUser, onBack }) => {
     const dispatch = useDispatch();
     const [notes, setNotes] = useState('');
@@ -139,19 +140,20 @@ const ContactDetailView: React.FC<{ contact: Contact; activities: Activity[]; cu
     );
 };
 
-// --- Main Team View Component ---
 interface TeamCrmViewProps {
   currentUser: User;
-  contacts: Contact[];
-  deals: Deal[];
+  teamMembers: User[];
+  allContacts: Contact[];
+  allDeals: Deal[];
   activities: Activity[];
-  refetchContacts: () => void;
 }
 
-type TeamViewTab = 'contacts' | 'deals';
+type MainTab = 'contacts' | 'deals';
+type DealView = 'kanban' | 'list';
 
-const TeamCrmView: React.FC<TeamCrmViewProps> = ({ currentUser, contacts, deals, activities, refetchContacts }) => {
-  const [activeTab, setActiveTab] = useState<TeamViewTab>('contacts');
+const TeamCrmView: React.FC<TeamCrmViewProps> = ({ currentUser, teamMembers, allContacts, allDeals, activities }) => {
+  const [mainTab, setMainTab] = useState<MainTab>('deals');
+  const [dealView, setDealView] = useState<DealView>('kanban');
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
@@ -160,10 +162,14 @@ const TeamCrmView: React.FC<TeamCrmViewProps> = ({ currentUser, contacts, deals,
   const [isDealModalOpen, setIsDealModalOpen] = useState(false);
   const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
   
-  const dispatch = useDispatch();
+  const dispatch: AppDispatch = useDispatch();
+  const { users } = useSelector((state: RootState) => state.users);
 
-  const myContacts = useMemo(() => contacts.filter(c => c.ownerId === currentUser.id), [contacts, currentUser.id]);
-  const myDeals = useMemo(() => deals.filter(d => d.ownerId === currentUser.id), [deals, currentUser.id]);
+  const teamMemberIds = useMemo(() => new Set(teamMembers.map(m => m.id)), [teamMembers]);
+
+  const teamContacts = useMemo(() => allContacts.filter(c => c.ownerId && teamMemberIds.has(c.ownerId)), [allContacts, teamMemberIds]);
+  const teamDeals = useMemo(() => allDeals.filter(d => teamMemberIds.has(d.ownerId)), [allDeals, teamMemberIds]);
+  
   const contactActivities = useMemo(() => {
     if (!selectedContact) return [];
     return activities.filter(a => a.contactId === selectedContact.id);
@@ -171,12 +177,11 @@ const TeamCrmView: React.FC<TeamCrmViewProps> = ({ currentUser, contacts, deals,
 
   const handleSaveContact = async (contactData: any) => {
     try {
+      const payload = { ...contactData, ownerId: contactData.owner_id };
       if (editingContact) {
-        const contactToUpdate = { ...editingContact, ...contactData, ownerId: contactData.owner_id } as Contact; 
-        await dispatch(updateContact(contactToUpdate as Contact)).unwrap();
+        await dispatch(updateContact({ ...editingContact, ...payload })).unwrap();
       } else {
-        const newContact = { ...contactData, ownerId: contactData.owner_id } as Omit<Contact, 'id' | 'createdAt'>;
-        await dispatch(createContact(newContact)).unwrap();
+        await dispatch(createContact(payload)).unwrap();
       }
       setIsContactModalOpen(false);
       setEditingContact(null);
@@ -187,7 +192,7 @@ const TeamCrmView: React.FC<TeamCrmViewProps> = ({ currentUser, contacts, deals,
   };
 
   const handleDeleteContact = async (contactId: number) => {
-    if (window.confirm("Are you sure you want to delete this contact? This action cannot be undone.")) {
+    if (window.confirm("Are you sure you want to delete this contact?")) {
         try {
             await dispatch(deleteContact(contactId)).unwrap();
             setIsContactModalOpen(false);
@@ -200,36 +205,65 @@ const TeamCrmView: React.FC<TeamCrmViewProps> = ({ currentUser, contacts, deals,
   };
 
   const handleSaveDeal = async (dealData: any) => {
-    // Placeholder for Redux action
-    console.log("Saving Deal:", dealData);
-    alert("Deal saving functionality will be added in the next step.");
-    setIsDealModalOpen(false);
-    setEditingDeal(null);
+    try {
+      const payload = { ...dealData, contactId: dealData.contact_id, ownerId: dealData.owner_id, closeDate: dealData.close_date };
+      if (editingDeal) {
+        await dispatch(updateDeal({ ...editingDeal, ...payload })).unwrap();
+      } else {
+        await dispatch(createDeal(payload)).unwrap();
+      }
+      setIsDealModalOpen(false);
+      setEditingDeal(null);
+    } catch (error) {
+      console.error("Failed to save deal:", error);
+      alert("Error: Could not save deal.");
+    }
+  };
+
+  const handleDeleteDeal = async (dealId: number) => {
+    if (window.confirm("Are you sure you want to delete this deal?")) {
+        try {
+            await dispatch(deleteDeal(dealId)).unwrap();
+            setIsDealModalOpen(false);
+            setEditingDeal(null);
+        } catch (error) {
+            console.error("Failed to delete deal:", error);
+            alert("Error: Could not delete deal.");
+        }
+    }
+  };
+
+  const handleDealClick = (deal: Deal) => {
+    setEditingDeal(deal);
+    setIsDealModalOpen(true);
   };
   
   const renderContent = () => {
-    if (activeTab === 'contacts') {
-      return selectedContact 
-        ? <ContactDetailView 
-            contact={selectedContact} 
-            activities={contactActivities} 
-            currentUser={currentUser}
-            onBack={() => setSelectedContact(null)} 
-          />
-          : <ContactListView 
-            contacts={myContacts} 
-            onSelectContact={setSelectedContact}
-            onEditContact={(contact) => { setEditingContact(contact); setIsContactModalOpen(true); }}
-          />;
+    switch (mainTab) {
+        case 'contacts':
+            return selectedContact 
+                ? <ContactDetailView 
+                    contact={selectedContact} 
+                    activities={contactActivities} 
+                    currentUser={currentUser}
+                    onBack={() => setSelectedContact(null)} 
+                  />
+                : <ContactListView 
+                    contacts={teamContacts} 
+                    onSelectContact={setSelectedContact}
+                    onEditContact={(contact) => { setEditingContact(contact); setIsContactModalOpen(true); }}
+                  />;
+        case 'deals':
+            if (dealView === 'kanban') {
+                return <DealKanban deals={teamDeals} onDealClick={handleDealClick} />;
+            }
+            if (dealView === 'list') {
+                return <DealListView deals={teamDeals} users={users} onDealClick={handleDealClick} />;
+            }
+            return null;
+        default:
+            return null;
     }
-    if (activeTab === 'deals') {
-      return (
-        <div>
-            <DealKanban deals={myDeals} />
-        </div>
-      );
-    }
-    return null;
   };
 
   return (
@@ -247,36 +281,44 @@ const TeamCrmView: React.FC<TeamCrmViewProps> = ({ currentUser, contacts, deals,
       {isDealModalOpen && (
         <DealEditorModal
           deal={editingDeal}
-          contacts={myContacts}
+          contacts={teamContacts}
           currentUser={currentUser}
           onClose={() => { setIsDealModalOpen(false); setEditingDeal(null); }}
           onSave={handleSaveDeal}
-          // onDelete will be wired up later
+          onDelete={handleDeleteDeal}
         />
       )}
       
       <div className="sm:flex sm:items-center sm:justify-between mb-6">
         <div className="border-b border-gray-200 dark:border-gray-700">
             <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-            <button onClick={() => { setActiveTab('contacts'); setSelectedContact(null); }} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'contacts' ? 'border-violet-600 text-violet-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:border-gray-600'}`}>
-                My Contacts
-            </button>
-            <button onClick={() => setActiveTab('deals')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'deals' ? 'border-violet-600 text-violet-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:border-gray-600'}`}>
-                Personal Deal Kanban
-            </button>
+                <button onClick={() => setMainTab('contacts')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${mainTab === 'contacts' ? 'border-violet-600 text-violet-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+                    Contacts
+                </button>
+                <button onClick={() => setMainTab('deals')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${mainTab === 'deals' ? 'border-violet-600 text-violet-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+                    Deals
+                </button>
             </nav>
         </div>
-        <div className="mt-3 sm:mt-0 sm:ml-4 flex space-x-2">
-            {activeTab === 'contacts' && !selectedContact && (
-                <button onClick={() => { setEditingContact(null); setIsContactModalOpen(true); }} className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-violet-600 hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500">
-                    + Create Contact
-                </button>
+        <div className="mt-3 sm:mt-0 sm:ml-4 flex items-center space-x-4">
+            {mainTab === 'deals' && (
+                <div className="inline-flex rounded-md shadow-sm">
+                    <button onClick={() => setDealView('kanban')} className={`px-3 py-2 text-sm font-medium ${dealView === 'kanban' ? 'bg-violet-600 text-white' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200'} rounded-l-md border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600`}>
+                        Kanban
+                    </button>
+                    <button onClick={() => setDealView('list')} className={`-ml-px px-3 py-2 text-sm font-medium ${dealView === 'list' ? 'bg-violet-600 text-white' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200'} rounded-r-md border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600`}>
+                        List
+                    </button>
+                </div>
             )}
-            {activeTab === 'deals' && (
-                <button onClick={() => { setEditingDeal(null); setIsDealModalOpen(true); }} className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-violet-600 hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500">
-                    + Create Deal
+             <div className="relative">
+                <button 
+                  onClick={() => mainTab === 'contacts' ? setIsContactModalOpen(true) : setIsDealModalOpen(true)}
+                  className="inline-flex items-center justify-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-violet-600 hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500"
+                >
+                  + Create {mainTab === 'contacts' ? 'Contact' : 'Deal'}
                 </button>
-            )}
+            </div>
         </div>
       </div>
 

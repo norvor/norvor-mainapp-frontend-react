@@ -9,7 +9,7 @@ import ToolDashboardView from '../tools/ToolDashboardView';
 interface CrmViewProps {
   viewingUser: User;
   teamMembers: User[];
-  allUsers: User[]; // Add allUsers to props
+  allUsers: User[]; 
   contacts: Contact[];
   deals: Deal[];
   activities: Activity[];
@@ -51,9 +51,10 @@ const CrmView: React.FC<CrmViewProps> = (props) => {
   switch (viewingUser.role) {
     case UserRole.TEAM:
       return <TeamCrmView 
-                currentUser={viewingUser} 
-                contacts={contacts} 
-                deals={deals} 
+                currentUser={viewingUser}
+                teamMembers={teamMembers}
+                allContacts={contacts}
+                allDeals={deals}
                 activities={activities} 
                 refetchContacts={refetchData}
              />;
