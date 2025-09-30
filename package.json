@@ -14,12 +14,14 @@
     "@tiptap/extension-placeholder": "^2.8.0",
     "@tiptap/react": "^2.8.0",
     "@tiptap/starter-kit": "^2.8.0",
+    "@types/react-router-dom": "^5.3.3",
     "prosemirror-model": "^1.22.0",
     "prosemirror-state": "^1.4.3",
     "prosemirror-view": "^1.35.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-redux": "^9.2.0",
+    "react-router-dom": "^7.9.3",
     "recharts": "^3.2.1"
   },
   "devDependencies": {

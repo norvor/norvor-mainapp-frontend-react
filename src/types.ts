@@ -1,18 +1,22 @@
-
 export enum UserRole {
   TEAM = 'Team',
   MANAGEMENT = 'Management',
   EXECUTIVE = 'Executive',
 }
 
-export interface User {
+export interface Organization {
   id: number;
+  name: string;
+  has_completed_onboarding: boolean;
+}
+
+export interface User {
+  id: string; // Changed from number
   name: string;
   role: UserRole;
   avatar: string;
-  managerId?: number;
-  teamIds?: string[]; // Added to associate users with teams
-  // HR Info
+  managerId?: string; // Changed from number
+  teamIds?: string[];
   title: string;
   department: string;
   email: string;
@@ -20,6 +24,7 @@ export interface User {
   address: string;
   emergencyContact: string;
   leaveBalance?: { [key: string]: number };
+  organization: Organization; 
 }
 
 
@@ -29,7 +34,7 @@ export interface Contact {
   company: string;
   email: string;
   phone: string;
-  ownerId: number | null;
+  ownerId: string | null; // Changed from number
   createdAt: string;
 }
 
@@ -45,7 +50,7 @@ export interface Activity {
   notes: string;
   date: string;
   contactId: number;
-  userId: number;
+  userId: string; // Changed from number
 }
 
 export enum DealStage {
@@ -62,7 +67,7 @@ export interface Deal {
   value: number;
   stage: DealStage;
   contactId: number;
-  ownerId: number;
+  ownerId: string; // Changed from number
   closeDate: string;
 }
 
@@ -84,12 +89,12 @@ export enum TaskStatus {
 export interface Project {
     id: number;
     name: string;
-    managerId: number;
+    managerId: string; // Changed from number
     status: ProjectStatus;
-    progress: number; // Percentage 0-100
+    progress: number;
     startDate: string;
     endDate: string;
-    memberIds: number[];
+    memberIds: string[]; // Changed from number[]
 }
 
 export interface Task {
@@ -97,7 +102,7 @@ export interface Task {
     name: string;
     description: string;
     status: TaskStatus;
-    assigneeId: number;
+    assigneeId: string; // Changed from number
     projectId: number;
     dueDate: string;
 }
@@ -123,7 +128,7 @@ export enum RequestStatus {
 
 export interface TimeOffRequest {
     id: number;
-    userId: number;
+    userId: string; // Changed from number
     type: LeaveType;
     startDate: string;
     endDate: string;
@@ -131,13 +136,12 @@ export interface TimeOffRequest {
     reason: string;
 }
 
-// --- Organiser Types (replaces Structure) ---
+// --- Organiser Types ---
 export enum OrganiserElementType {
     DEPARTMENT = 'Department',
     TEAM = 'Team',
-    ROLE = 'Role',
     SOFTWARE = 'Software',
-    PROCESS = 'Process Step',
+    NORVOR_TOOL = 'Norvor Tool',
 }
 
 export interface OrganiserElement {
@@ -161,7 +165,7 @@ export interface Ticket {
     title: string;
     description: string;
     status: TicketStatus;
-    submittedBy: number; // userId
+    submittedBy: string; // Changed from number
     teamId: string;
     createdAt: string;
 }

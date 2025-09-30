@@ -1,4 +1,3 @@
-// src/store/store.ts
 import { configureStore } from '@reduxjs/toolkit';
 import userReducer from './slices/userSlice';
 import contactReducer from './slices/contactSlice';
@@ -8,9 +7,8 @@ import taskReducer from './slices/taskSlice';
 import activityReducer from './slices/activitySlice'; 
 import timeOffRequestReducer from './slices/timeOffRequestSlice'; 
 import organiserReducer from './slices/organiserSlice'; 
-// --- New Import ---
-import docReducer from './slices/docSlice'; 
 import ticketReducer from './slices/ticketSlice'; 
+import sidebarReducer from './slices/sidebarSlice'; // --- ADD THIS IMPORT ---
 
 export const store = configureStore({
   reducer: {
@@ -22,9 +20,8 @@ export const store = configureStore({
     activities: activityReducer,
     timeOffRequests: timeOffRequestReducer,
     organiserElements: organiserReducer,
-    // --- Add the new reducer ---
     tickets: ticketReducer,
-    docs: docReducer, // <-- ADDED
+    sidebar: sidebarReducer, // --- ADD THIS LINE ---
   },
 });
 
