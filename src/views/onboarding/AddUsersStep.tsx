@@ -3,7 +3,7 @@ import { OrganiserElement, UserRole } from '../../types';
 import apiClient from '../../utils/apiClient';
 
 interface NewUserInput {
-  id: number;
+  id: number | string; // Allow for temporary number ID
   name: string;
   email: string;
   role: UserRole;
@@ -22,7 +22,7 @@ const AddUsersStep: React.FC<AddUsersStepProps> = ({ departments, onBack, onFini
   ]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleUserChange = (id: number, field: keyof NewUserInput, value: string) => {
+  const handleUserChange = (id: number | string, field: keyof NewUserInput, value: string) => {
     setUsers(users.map(u => u.id === id ? { ...u, [field]: value } : u));
   };
 
@@ -34,10 +34,10 @@ const AddUsersStep: React.FC<AddUsersStepProps> = ({ departments, onBack, onFini
       setIsSubmitting(true);
       try {
         for (const user of users) {
-          if (user.name && user.email) { // Only add users with a name and email
+          if (user.name && user.email) {
             await apiClient('/users/create_by_admin', {
               method: 'POST',
-              body: JSON.stringify({ ...user, password: "password123" }) // Use a default password
+              body: JSON.stringify({ ...user, password: "password123" })
             });
           }
         }

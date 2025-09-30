@@ -2,6 +2,11 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../../store/store';
 import { OrganiserElement, OrganiserElementType, User, UserRole } from '../../types';
+// --- NEW IMPORTS ---
+import SearchIcon from '../../components/icons/SearchIcon';
+import TrashIcon from '../../components/icons/TrashIcon';
+import PlusIcon from '../../components/icons/PlusIcon'; // Assuming a generic PlusIcon exists, or using an SVG directly
+// -------------------
 
 // Icons
 import DepartmentIcon from '../../components/icons/DepartmentIcon';
@@ -23,6 +28,14 @@ interface OrganiserViewProps {}
 interface TreeNode extends OrganiserElement {
     children: TreeNode[];
 }
+
+// --- NEW LOCAL TYPE FOR MEMBER MANAGEMENT ---
+interface TeamMember {
+    userId: string;
+    teamRole: string; // e.g., 'Team Lead', 'Scrum Master'
+    teamDesignation: string; // e.g., 'Senior Dev', 'Sales Executive'
+}
+// ------------------------------------------
 
 const ELEMENT_ICONS: Record<string, React.FC<{className?: string}>> = {
     [OrganiserElementType.DEPARTMENT]: DepartmentIcon,
@@ -91,10 +104,179 @@ const TreeItem: React.FC<{
     );
 };
 
+// --- NEW MEMBER MANAGEMENT COMPONENT ---
+const MemberManagement: React.FC<{
+    element: OrganiserElement;
+    allUsers: User[];
+    isEditable: boolean;
+    onSave: (updatedElement: OrganiserElement) => Promise<void>;
+}> = ({ element, allUsers, isEditable, onSave }) => {
+    const [searchTerm, setSearchTerm] = useState('');
+    const [teamRole, setTeamRole] = useState('');
+    const [teamDesignation, setTeamDesignation] = useState('');
+    
+    // Ensure 'members' exists and is an array
+    const currentMembers: TeamMember[] = useMemo(() => element.properties.members || [], [element.properties.members]);
+    
+    // Map of user IDs currently in the team for quick lookup
+    const memberIdMap = useMemo(() => new Set(currentMembers.map(m => m.userId)), [currentMembers]);
+
+    // Filter users not already in the team based on search term
+    const availableUsers = useMemo(() => {
+        if (!searchTerm) return [];
+        return allUsers
+            .filter(user => !memberIdMap.has(user.id))
+            .filter(user => 
+                user.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                user.email.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+    }, [allUsers, memberIdMap, searchTerm]);
+    
+    const getMemberDetails = useCallback((userId: string): { user: User, member: TeamMember } | null => {
+        const user = allUsers.find(u => u.id === userId);
+        const member = currentMembers.find(m => m.userId === userId);
+        if (!user || !member) return null;
+        return { user, member };
+    }, [allUsers, currentMembers]);
+
+
+    const handleAddMember = async (user: User) => {
+        if (!isEditable) return;
+        const newMember: TeamMember = {
+            userId: user.id,
+            teamRole: teamRole || 'Member',
+            teamDesignation: teamDesignation || user.title || 'N/A',
+        };
+        
+        const newMembersList = [...currentMembers, newMember];
+        const updatedElement: OrganiserElement = {
+            ...element,
+            properties: {
+                ...element.properties,
+                members: newMembersList,
+            }
+        };
+        
+        await onSave(updatedElement);
+        setSearchTerm('');
+        setTeamRole('');
+        setTeamDesignation('');
+    };
+    
+    const handleRemoveMember = async (userId: string) => {
+        if (!isEditable) return;
+        const newMembersList = currentMembers.filter(m => m.userId !== userId);
+        const updatedElement: OrganiserElement = {
+            ...element,
+            properties: {
+                ...element.properties,
+                members: newMembersList,
+            }
+        };
+        await onSave(updatedElement);
+    };
+
+    return (
+        <div className="mt-8 border-t dark:border-gray-700 pt-6">
+            <h4 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">Team Members ({currentMembers.length})</h4>
+
+            {/* Add Member Section */}
+            {isEditable && (
+                <div className="border p-4 rounded-lg space-y-3 mb-6 bg-gray-50 dark:bg-slate-700/50">
+                    <h5 className="font-semibold text-gray-700 dark:text-gray-200">Add Employee</h5>
+                    <div className="relative">
+                        <SearchIcon className="w-5 h-5 absolute top-2.5 left-3 text-gray-400" />
+                        <input
+                            type="text"
+                            placeholder="Search existing employees by name or email"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full p-2 pl-10 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:ring-violet-500 focus:border-violet-500 bg-transparent"
+                        />
+                    </div>
+                    {/* Search Results / Add Form */}
+                    {searchTerm && (
+                        <div className="space-y-2 max-h-48 overflow-y-auto">
+                            {availableUsers.length > 0 ? (
+                                availableUsers.map(user => (
+                                    <div key={user.id} className="p-2 border dark:border-gray-600 rounded-md flex justify-between items-center bg-white dark:bg-gray-800">
+                                        <div>
+                                            <p className="text-sm font-medium dark:text-gray-200">{user.name}</p>
+                                            <p className="text-xs text-gray-500">{user.email}</p>
+                                        </div>
+                                        <button
+                                            onClick={() => handleAddMember(user)}
+                                            className="px-3 py-1 text-xs rounded-md bg-violet-600 text-white hover:bg-violet-700 font-medium"
+                                        >
+                                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd"></path></svg>
+                                        </button>
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="text-sm text-gray-500 text-center py-2">No users found or all users are already members.</p>
+                            )}
+                        </div>
+                    )}
+                    
+                    <div className="grid grid-cols-2 gap-3 pt-2">
+                        <input
+                            type="text"
+                            placeholder="Team Role (e.g., Lead)"
+                            value={teamRole}
+                            onChange={(e) => setTeamRole(e.target.value)}
+                            className="w-full p-2 border rounded-md text-sm bg-transparent dark:border-gray-600"
+                        />
+                        <input
+                            type="text"
+                            placeholder="Designation (e.g., Scrum Master)"
+                            value={teamDesignation}
+                            onChange={(e) => setTeamDesignation(e.target.value)}
+                            className="w-full p-2 border rounded-md text-sm bg-transparent dark:border-gray-600"
+                        />
+                    </div>
+                </div>
+            )}
+            
+            {/* Current Members List */}
+            <div className="space-y-3">
+                {currentMembers.length > 0 ? (
+                    currentMembers.map(member => {
+                        const memberData = getMemberDetails(member.userId);
+                        if (!memberData) return null; // Should not happen with valid data
+                        
+                        return (
+                            <div key={member.userId} className="p-3 border dark:border-gray-700 rounded-lg flex justify-between items-center bg-white dark:bg-gray-800">
+                                <div>
+                                    <p className="font-semibold text-gray-900 dark:text-gray-100">{memberData.user.name}</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                        <span className="font-medium">{member.teamDesignation}</span> ({member.teamRole})
+                                    </p>
+                                </div>
+                                {isEditable && (
+                                    <button
+                                        onClick={() => handleRemoveMember(member.userId)}
+                                        className="p-1 rounded text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50"
+                                    >
+                                        <TrashIcon className="w-4 h-4"/>
+                                    </button>
+                                )}
+                            </div>
+                        );
+                    })
+                ) : (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">No employees have been added to this {element.type} yet.</p>
+                )}
+            </div>
+        </div>
+    );
+};
+// --- END NEW COMPONENT ---
+
 
 const OrganiserView: React.FC<OrganiserViewProps> = () => {
     const dispatch: AppDispatch = useDispatch();
-    const { currentUser } = useSelector((state: RootState) => state.users);
+    // --- MODIFIED SELECTOR: Get all users ---
+    const { currentUser, users: allUsers } = useSelector((state: RootState) => state.users);
     const { organiserElements: elements } = useSelector((state: RootState) => state.organiserElements);
     
     const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
@@ -125,10 +307,17 @@ const OrganiserView: React.FC<OrganiserViewProps> = () => {
         setSelectedElementId(elementId);
     };
     
+    // --- Consolidated Save Handler ---
+    const handleUpdateElement = useCallback(async (updatedElement: OrganiserElement) => {
+        if (!isEditable) return;
+         await dispatch(updateOrganiserElement(updatedElement));
+    }, [dispatch, isEditable]);
+    // ---------------------------------
+
     const handleUpdateLabel = async (e: React.FocusEvent<HTMLInputElement>) => {
         if (!selectedElement || !isEditable || selectedElement.label === e.target.value) return;
         const updatedElement = { ...selectedElement, label: e.target.value };
-        await dispatch(updateOrganiserElement(updatedElement));
+        await handleUpdateElement(updatedElement);
     };
 
     const addElement = async (type: OrganiserElementType, label: string, properties: any = {}) => {
@@ -137,7 +326,8 @@ const OrganiserView: React.FC<OrganiserViewProps> = () => {
             type,
             label,
             parentId: selectedElementId,
-            properties
+            // Initialize members array for Dept/Team types
+            properties: (type === OrganiserElementType.DEPARTMENT || type === OrganiserElementType.TEAM) ? { members: [], ...properties } : properties
         };
         await dispatch(createOrganiserElement(newElement));
     };
@@ -149,6 +339,9 @@ const OrganiserView: React.FC<OrganiserViewProps> = () => {
             setSelectedElementId(null);
         }
     };
+    
+    // Check if the selected element is a type that should manage members
+    const isMemberManagedType = selectedElement && (selectedElement.type === OrganiserElementType.DEPARTMENT || selectedElement.type === OrganiserElementType.TEAM);
 
     return (
         <div className="flex h-full bg-white dark:bg-gray-800 rounded-lg shadow-inner border border-gray-200/50 dark:border-slate-700/50 overflow-hidden">
@@ -190,6 +383,17 @@ const OrganiserView: React.FC<OrganiserViewProps> = () => {
                             </div>
                         </div>
                         
+                        {/* --- NEW MEMBER MANAGEMENT INTEGRATION --- */}
+                        {isMemberManagedType && (
+                            <MemberManagement 
+                                element={selectedElement}
+                                allUsers={allUsers}
+                                isEditable={isEditable}
+                                onSave={handleUpdateElement}
+                            />
+                        )}
+                        {/* ----------------------------------------- */}
+
                         {isEditable && (selectedElement.type === OrganiserElementType.TEAM || selectedElement.type === OrganiserElementType.DEPARTMENT) && (
                             <div className="mt-8 border-t dark:border-gray-700 pt-6">
                                 <h4 className="font-semibold mb-2">Add Norvor Tool</h4>

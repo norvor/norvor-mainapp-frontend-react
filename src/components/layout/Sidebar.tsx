@@ -118,8 +118,9 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, isOpen, onToggleSidebar 
                     return (
                         <div key={item.id} className="mt-1">
                             <div onClick={() => toggleSection(item.id)}>
+                                {/* FIX: Force the link to ALWAYS go to 'hub' when clicking the parent item. */}
                                 <NavButton
-                                    to={`/${basePath}/${item.id}/${item.modules[0]?.id || 'hub'}`}
+                                    to={`/${basePath}/${item.id}/hub`} 
                                     isActive={location.pathname.includes(`/${basePath}/${item.id}`)}
                                     isSidebarOpen={isOpen}
                                     icon={<Icon />}

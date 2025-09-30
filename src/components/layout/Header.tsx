@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { User } from '../../types';
 import SearchIcon from '../icons/SearchIcon';
@@ -16,6 +15,11 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ user, onToggleSidebar }) => {
   const { theme, toggleTheme } = useTheme();
+
+  const handleError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    e.currentTarget.onerror = null; // prevents infinite looping
+    e.currentTarget.src = 'https://placehold.co/36x36/cccccc/333333?text=AV'; // Placeholder for 36x36
+  };
 
   return (
     <header className="flex items-center justify-between h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 shrink-0">
@@ -59,7 +63,14 @@ const Header: React.FC<HeaderProps> = ({ user, onToggleSidebar }) => {
 
         <div className="relative">
           <div className="flex items-center space-x-3 cursor-pointer">
-            <img className="h-9 w-9 rounded-full object-cover" src={user.avatar} alt="User Avatar" />
+            {/* --- EDITS APPLIED HERE --- */}
+            <img 
+              className="h-9 w-9 rounded-full object-cover" 
+              src={user.avatar || 'https://placehold.co/36x36/cccccc/333333?text=AV'} 
+              alt="User Avatar" 
+              onError={handleError}
+            />
+            {/* --------------------------- */}
             <div className="hidden md:block">
               <div className="text-sm font-semibold text-gray-800 dark:text-gray-100">{user.name}</div>
               <div className="text-xs text-gray-500 dark:text-gray-400">{user.role}</div>

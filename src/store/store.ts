@@ -9,6 +9,8 @@ import timeOffRequestReducer from './slices/timeOffRequestSlice';
 import organiserReducer from './slices/organiserSlice'; 
 import ticketReducer from './slices/ticketSlice'; 
 import sidebarReducer from './slices/sidebarSlice'; // --- ADD THIS IMPORT ---
+import docReducer from './slices/docSlice'; // --- ADDED THIS IMPORT ---
+
 
 export const store = configureStore({
   reducer: {
@@ -21,7 +23,8 @@ export const store = configureStore({
     timeOffRequests: timeOffRequestReducer,
     organiserElements: organiserReducer,
     tickets: ticketReducer,
-    sidebar: sidebarReducer, // --- ADD THIS LINE ---
+    sidebar: sidebarReducer,
+    docs: docReducer, // --- ADD THIS LINE ---
   },
 });
 
