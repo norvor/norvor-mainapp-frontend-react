@@ -1,11 +1,12 @@
-
 import React, { useState, useMemo } from 'react';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../../store/store';
 import { User, TimeOffRequest, RequestStatus } from '../../../types';
 
 // Sub-components
 const LeaveApprovalQueue: React.FC<{ requests: TimeOffRequest[], users: User[] }> = ({ requests, users }) => {
     const pendingRequests = requests.filter(r => r.status === RequestStatus.PENDING);
-    const getUserName = (id: number) => users.find(u => u.id === id)?.name || 'Unknown';
+    const getUserName = (id: string) => users.find(u => u.id === id)?.name || 'Unknown';
 
     return (
         <div className="bg-white shadow rounded-lg p-6">
@@ -66,21 +67,25 @@ const PerformanceReviewView: React.FC<{ directReports: User[] }> = ({ directRepo
 
 // Main Component
 interface ManagementHrViewProps {
-  currentUser: User;
   directReports: User[];
-  timeOffRequests: TimeOffRequest[];
 }
 
 type ManagementHrTab = 'approvals' | 'calendar' | 'reviews';
 
-const ManagementHrView: React.FC<ManagementHrViewProps> = (props) => {
+const ManagementHrView: React.FC<ManagementHrViewProps> = ({ directReports }) => {
   const [activeTab, setActiveTab] = useState<ManagementHrTab>('approvals');
+  const { timeOffRequests } = useSelector((state: RootState) => state.timeOffRequests);
+
+  const teamTimeOffRequests = useMemo(() => {
+    const directReportIds = new Set(directReports.map(dr => dr.id));
+    return timeOffRequests.filter(r => directReportIds.has(r.userId));
+  }, [timeOffRequests, directReports]);
   
   const renderContent = () => {
     switch(activeTab) {
-        case 'approvals': return <LeaveApprovalQueue requests={props.timeOffRequests} users={props.directReports} />;
+        case 'approvals': return <LeaveApprovalQueue requests={teamTimeOffRequests} users={directReports} />;
         case 'calendar': return <TeamCalendarView />;
-        case 'reviews': return <PerformanceReviewView directReports={props.directReports} />;
+        case 'reviews': return <PerformanceReviewView directReports={directReports} />;
     }
   };
 

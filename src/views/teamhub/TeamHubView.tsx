@@ -6,12 +6,17 @@ import { User, Project, Ticket } from '../../types';
 interface TeamHubViewProps {
   elementId?: string;
   teamMembers: User[];
-  projects: Project[];
-  tickets: Ticket[];
 }
 
-const TeamHubView: React.FC<TeamHubViewProps> = ({ elementId, teamMembers, projects, tickets }) => {
+const TeamHubView: React.FC<TeamHubViewProps> = ({ elementId, teamMembers }) => {
   const { organiserElements } = useSelector((state: RootState) => state.organiserElements);
+  const { projects } = useSelector((state: RootState) => state.projects);
+  const { tickets: allTickets } = useSelector((state: RootState) => state.tickets);
+
+  const tickets = useMemo(() => {
+    if (!elementId) return [];
+    return allTickets.filter(t => t.teamId === elementId);
+  }, [allTickets, elementId]);
 
   const teamElement = useMemo(() => {
     if (!elementId) return null;

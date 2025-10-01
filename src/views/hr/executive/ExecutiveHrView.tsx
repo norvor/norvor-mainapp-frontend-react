@@ -1,19 +1,15 @@
 // src/views/hr/executive/ExecutiveHrView.tsx
 
 import React, { useState, useMemo } from 'react';
-import { useDispatch } from 'react-redux'; // <-- ADD useDispatch
+import { useDispatch, useSelector } from 'react-redux'; 
+import { RootState } from '../../../store/store';
 import { User, TimeOffRequest, UserRole } from '../../../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { updateUserRole } from '../../../store/slices/userSlice'; // <-- Add this import at the top
+import { updateUserRole } from '../../../store/slices/userSlice';
 
-
-// NOTE: We rely on the thunk being implemented in userSlice.ts
-// We'll manually include the logic here for the user to paste.
-// Assuming updateUserRole is now accessible.
-// Since we cannot directly import updateUserRole, we'll simulate the import.
 
 // --- Helper component for Role Management ---
-const RolePermissionManagement: React.FC<{ users: User[]; onRoleChange: (userId: number, newRole: UserRole) => void }> = ({ users, onRoleChange }) => {
+const RolePermissionManagement: React.FC<{ users: User[]; onRoleChange: (userId: string, newRole: UserRole) => void }> = ({ users, onRoleChange }) => {
     // Memoize the list of roles for the dropdown
     const availableRoles = useMemo(() => Object.values(UserRole), []);
 
@@ -136,10 +132,12 @@ type ExecutiveHrTab = 'employees' | 'reports' | 'permissions';
 
 const ExecutiveHrView: React.FC<ExecutiveHrViewProps> = (props) => {
   const [activeTab, setActiveTab] = useState<ExecutiveHrTab>('reports');
-  const dispatch = useDispatch(); // <-- Initialize dispatch
+  const dispatch = useDispatch();
+  const { users: allUsers } = useSelector((state: RootState) => state.users);
+
 
   // Function to be passed down to handle the role change and dispatch the thunk
-  const handleRoleChange = async (userId: number, newRole: UserRole) => {
+  const handleRoleChange = async (userId: string, newRole: UserRole) => {
     const userName = props.allUsers.find(u => u.id === userId)?.name || 'Unknown User';
 
     if (!window.confirm(`Are you sure you want to change the role for ${userName} to ${newRole}?`)) {
@@ -158,11 +156,11 @@ const ExecutiveHrView: React.FC<ExecutiveHrViewProps> = (props) => {
 
   const renderContent = () => {
     switch(activeTab) {
-        case 'employees': return <EmployeeManagementView users={props.allUsers} />;
-        case 'reports': return <HrReportsDashboard users={props.allUsers} />;
+        case 'employees': return <EmployeeManagementView users={allUsers} />;
+        case 'reports': return <HrReportsDashboard users={allUsers} />;
         case 'permissions': 
             return <RolePermissionManagement 
-                        users={props.allUsers} 
+                        users={allUsers} 
                         onRoleChange={handleRoleChange} 
                     />;
     }

@@ -1,5 +1,6 @@
-
 import React, { useState, useMemo } from 'react';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../../store/store';
 import { User, Project, Task, TaskStatus } from '../../../types';
 import TaskKanban from '../../../components/projects/TaskKanban';
 
@@ -87,36 +88,37 @@ const ProjectBoardView: React.FC<{ projects: Project[]; tasks: Task[]; onTaskCli
 // Main Component
 interface TeamProjectsViewProps {
   currentUser: User;
-  projects: Project[];
-  tasks: Task[];
-  allUsers: User[];
 }
 
 type TeamProjectsTab = 'my-tasks' | 'project-board';
 
-const TeamProjectsView: React.FC<TeamProjectsViewProps> = (props) => {
+const TeamProjectsView: React.FC<TeamProjectsViewProps> = ({ currentUser }) => {
+  const { projects } = useSelector((state: RootState) => state.projects);
+  const { tasks } = useSelector((state: RootState) => state.tasks);
+  const { users: allUsers } = useSelector((state: RootState) => state.users);
+
   const [activeTab, setActiveTab] = useState<TeamProjectsTab>('my-tasks');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
-  const myTasks = useMemo(() => props.tasks.filter(t => t.assigneeId === props.currentUser.id), [props.tasks, props.currentUser.id]);
-  const myProjects = useMemo(() => props.projects.filter(p => p.memberIds.includes(props.currentUser.id)), [props.projects, props.currentUser.id]);
+  const myTasks = useMemo(() => tasks.filter(t => t.assigneeId === currentUser.id), [tasks, currentUser.id]);
+  const myProjects = useMemo(() => projects.filter(p => p.memberIds.includes(currentUser.id)), [projects, currentUser.id]);
 
   const handleTaskClick = (task: Task) => setSelectedTask(task);
   const handleCloseModal = () => setSelectedTask(null);
 
   const selectedTaskDetails = useMemo(() => {
       if (!selectedTask) return null;
-      const project = props.projects.find(p => p.id === selectedTask.projectId);
-      const assignee = props.allUsers.find(u => u.id === selectedTask.assigneeId);
+      const project = projects.find(p => p.id === selectedTask.projectId);
+      const assignee = allUsers.find(u => u.id === selectedTask.assigneeId);
       if (!project || !assignee) return null;
       return { project, assignee };
-  }, [selectedTask, props.projects, props.allUsers]);
+  }, [selectedTask, projects, allUsers]);
 
 
   const renderContent = () => {
     switch(activeTab) {
         case 'my-tasks': return <MyTasksView tasks={myTasks} projects={myProjects} onTaskClick={handleTaskClick} />;
-        case 'project-board': return <ProjectBoardView projects={myProjects} tasks={props.tasks} onTaskClick={handleTaskClick}/>;
+        case 'project-board': return <ProjectBoardView projects={myProjects} tasks={tasks} onTaskClick={handleTaskClick}/>;
     }
   };
 

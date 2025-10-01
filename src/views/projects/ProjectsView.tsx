@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
-import { User, UserRole, Project, Task } from '../../types';
+import { User, UserRole } from '../../types';
 import TeamProjectsView from './team/TeamProjectsView';
 import ManagementProjectsView from './management/ManagementProjectsView';
 import ExecutiveProjectsView from './executive/ExecutiveProjectsView';
@@ -8,13 +8,10 @@ import ToolDashboardView from '../tools/ToolDashboardView';
 
 interface ProjectsViewProps {
   viewingUser: User;
-  allUsers: User[];
-  projects: Project[];
-  tasks: Task[];
   teamMembers: User[];
 }
 
-const ProjectsView: React.FC<ProjectsViewProps> = (props) => {
+const ProjectsView: React.FC<ProjectsViewProps> = ({ viewingUser, teamMembers }) => {
   const location = useLocation();
   const urlParams = new URLSearchParams(location.search);
   const forcedView = urlParams.get('view');
@@ -24,39 +21,23 @@ const ProjectsView: React.FC<ProjectsViewProps> = (props) => {
     return (
       <ToolDashboardView
         toolId="pm"
-        projects={props.projects}
-        tasks={props.tasks}
-        users={props.allUsers}
-        currentUser={props.viewingUser}
+        currentUser={viewingUser}
       />
     );
   }
 
   // If a view is specified, render the corresponding role-based component.
-  switch (props.viewingUser.role) {
+  switch (viewingUser.role) {
     case UserRole.TEAM:
       return <TeamProjectsView 
-                currentUser={props.viewingUser}
-                projects={props.projects}
-                tasks={props.tasks}
-                allUsers={props.allUsers}
+                currentUser={viewingUser}
              />;
     case UserRole.MANAGEMENT:
-        const managedProjects = props.projects.filter(p => 
-            props.teamMembers.some(tm => tm.id === p.managerId) || p.managerId === props.viewingUser.id
-        );
       return <ManagementProjectsView 
-                currentUser={props.viewingUser}
-                projects={managedProjects}
-                tasks={props.tasks}
-                teamMembers={props.teamMembers}
+                teamMembers={teamMembers}
              />;
     case UserRole.EXECUTIVE:
-      return <ExecutiveProjectsView
-                allUsers={props.allUsers}
-                projects={props.projects}
-                tasks={props.tasks}
-             />;
+      return <ExecutiveProjectsView />;
     default:
       return <div className="text-red-500">Invalid user role.</div>;
   }

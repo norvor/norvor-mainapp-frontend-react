@@ -5,10 +5,6 @@ import { useDispatch, useSelector } from 'react-redux';
 import { fetchUsers, updateUserDetails, fetchCurrentUser } from '../../store/slices/userSlice';
 import { AppDispatch, RootState } from '../../store/store';
 
-interface AdminSettingsProps {
-  allUsers: User[];
-}
-
 // --- NEW EditUserModal Component ---
 interface EditUserModalProps { 
     user: User; 
@@ -46,7 +42,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, currentUser, allUse
             title,
             department,
             role,
-            managerId: managerId || null, // Use null for JSON serialization (clearing the field)
+            managerId: managerId || undefined,
             phone,
             address,
             emergencyContact,
@@ -59,10 +55,8 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, currentUser, allUse
                 update: updatePayload 
             })).unwrap();
 
-            // 1. Refresh the main user list (allUsers)
             onUserUpdated(); 
             
-            // 2. IMPORTANT: If the updated user is the current user, refresh currentUser state
             if (user.id === currentUser.id) {
                 await dispatch(fetchCurrentUser()).unwrap(); 
             }
@@ -116,7 +110,6 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, currentUser, allUse
                             <input type="text" value={address} onChange={e => setAddress(e.target.value)} placeholder="Address" className="w-full p-2 border rounded bg-transparent dark:border-gray-600" />
                             <input type="text" value={emergencyContact} onChange={e => setEmergencyContact(e.target.value)} placeholder="Emergency Contact" className="w-full p-2 border rounded bg-transparent dark:border-gray-600" />
                             <input type="url" value={avatar} onChange={e => setAvatar(e.target.value)} placeholder="Avatar URL" className="w-full p-2 border rounded bg-transparent dark:border-gray-600" />
-                            {/* --- EDITS APPLIED HERE --- */}
                             {avatar && (
                                 <img 
                                     src={avatar} 
@@ -125,7 +118,6 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, currentUser, allUse
                                     onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://placehold.co/40x40/cccccc/333333?text=AV' }}
                                 />
                             )}
-                            {/* --------------------------- */}
                         </div>
                     </div>
                     
@@ -202,8 +194,8 @@ const AddUserModal: React.FC<{ onClose: () => void; onUserAdded: () => void; }> 
 };
 
 
-const AdminSettings: React.FC<AdminSettingsProps> = ({ allUsers }) => {
-  const { currentUser } = useSelector((state: RootState) => state.users);
+const AdminSettings: React.FC = () => {
+  const { currentUser, users: allUsers } = useSelector((state: RootState) => state.users);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null); 
   const dispatch: AppDispatch = useDispatch();
@@ -224,7 +216,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ allUsers }) => {
   return (
     <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
       {isModalOpen && <AddUserModal onClose={() => setIsModalOpen(false)} onUserAdded={handleUserRefresh} />}
-      {editingUser && <EditUserModal user={editingUser} currentUser={currentUser!} allUsers={allUsers} onClose={handleCloseEdit} onUserUpdated={handleUserRefresh} />} 
+      {editingUser && currentUser && <EditUserModal user={editingUser} currentUser={currentUser} allUsers={allUsers} onClose={handleCloseEdit} onUserUpdated={handleUserRefresh} />} 
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">User Management</h2>
         <button onClick={() => setIsModalOpen(true)} className="px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-md hover:bg-violet-700">

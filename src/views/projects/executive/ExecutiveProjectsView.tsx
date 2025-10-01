@@ -1,5 +1,6 @@
-
 import React, { useState, useMemo } from 'react';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../../store/store';
 import { User, Project, Task, ProjectStatus } from '../../../types';
 
 // Sub-components
@@ -13,7 +14,7 @@ const getStatusColor = (status: ProjectStatus) => {
     }
 }
 const PortfolioDashboard: React.FC<{ projects: Project[], users: User[] }> = ({ projects, users }) => {
-    const getManagerName = (id: number) => users.find(u => u.id === id)?.name || 'N/A';
+    const getManagerName = (id: string) => users.find(u => u.id === id)?.name || 'N/A';
     
     return (
         <div className="bg-white shadow rounded-lg p-6">
@@ -97,22 +98,20 @@ const RoadmapView: React.FC<{projects: Project[]}> = ({ projects }) => (
 );
 
 // Main Component
-interface ExecutiveProjectsViewProps {
-  allUsers: User[];
-  projects: Project[];
-  tasks: Task[];
-}
-
 type ExecutiveProjectsTab = 'portfolio' | 'resources' | 'roadmap';
 
-const ExecutiveProjectsView: React.FC<ExecutiveProjectsViewProps> = (props) => {
+const ExecutiveProjectsView: React.FC = () => {
+  const { users: allUsers } = useSelector((state: RootState) => state.users);
+  const { projects } = useSelector((state: RootState) => state.projects);
+  const { tasks } = useSelector((state: RootState) => state.tasks);
+
   const [activeTab, setActiveTab] = useState<ExecutiveProjectsTab>('portfolio');
   
   const renderContent = () => {
     switch(activeTab) {
-        case 'portfolio': return <PortfolioDashboard projects={props.projects} users={props.allUsers} />;
-        case 'resources': return <ResourceManagementView users={props.allUsers} tasks={props.tasks} />;
-        case 'roadmap': return <RoadmapView projects={props.projects} />;
+        case 'portfolio': return <PortfolioDashboard projects={projects} users={allUsers} />;
+        case 'resources': return <ResourceManagementView users={allUsers} tasks={tasks} />;
+        case 'roadmap': return <RoadmapView projects={projects} />;
     }
   };
 

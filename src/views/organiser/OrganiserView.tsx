@@ -4,25 +4,21 @@ import { RootState, AppDispatch } from '../../store/store';
 import { OrganiserElement, OrganiserElementType, User, UserRole } from '../../types';
 import SearchIcon from '../../components/icons/SearchIcon';
 import TrashIcon from '../../components/icons/TrashIcon';
+import TreeItem from '../../components/organiser/TreeItem'; // Updated Import
+import { NORVOR_TOOL_DEFINITIONS } from '../../components/organiser/TreeItem'; // Import definitions
 
 // Icons
-import DepartmentIcon from '../../components/icons/DepartmentIcon';
-import TeamIcon from '../../components/icons/TeamIcon';
-import SoftwareIcon from '../../components/icons/SoftwareIcon';
 import CrmIcon from '../../components/icons/CrmIcon';
 import PmIcon from '../../components/icons/PmIcon';
 import DocsIcon from '../../components/icons/DocsIcon';
 import HrIcon from '../../components/icons/HrIcon';
 import DataLabsIcon from '../../components/icons/DataLabsIcon';
 
-
-import { 
-    createOrganiserElement, 
+import {
+    createOrganiserElement,
     updateOrganiserElement,
-    deleteOrganiserElement 
-} from '../../store/slices/organiserSlice'; 
-
-interface OrganiserViewProps {}
+    deleteOrganiserElement
+} from '../../store/slices/organiserSlice';
 
 interface TreeNode extends OrganiserElement {
     children: TreeNode[];
@@ -30,78 +26,9 @@ interface TreeNode extends OrganiserElement {
 
 interface TeamMember {
     userId: string;
-    teamRole: string; 
-    teamDesignation: string; 
+    teamRole: string;
+    teamDesignation: string;
 }
-
-const ELEMENT_ICONS: Record<string, React.FC<{className?: string}>> = {
-    [OrganiserElementType.DEPARTMENT]: DepartmentIcon,
-    [OrganiserElementType.TEAM]: TeamIcon,
-    [OrganiserElementType.SOFTWARE]: SoftwareIcon,
-    [OrganiserElementType.NORVOR_TOOL]: DocsIcon, 
-};
-
-const NORVOR_TOOL_DEFINITIONS = [
-    { id: 'crm', label: 'CRM', icon: CrmIcon },
-    { id: 'pm', label: 'Projects', icon: PmIcon },
-    { id: 'docs', label: 'Library', icon: DocsIcon },
-    { id: 'hr', label: 'HR', icon: HrIcon },
-    { id: 'datalabs', label: 'Data Labs', icon: DataLabsIcon },
-];
-
-const TreeItem: React.FC<{
-    node: TreeNode;
-    level: number;
-    selectedElementId: string | null;
-    onSelect: (elementId: string) => void;
-}> = ({ node, level, selectedElementId, onSelect }) => {
-    let Icon = ELEMENT_ICONS[node.type];
-    if (node.type === OrganiserElementType.NORVOR_TOOL) {
-        const tool = NORVOR_TOOL_DEFINITIONS.find(t => t.id === node.properties.tool_id);
-        if (tool) Icon = tool.icon;
-    }
-
-    const [isExpanded, setIsExpanded] = useState(true);
-    const hasChildren = node.children && node.children.length > 0; 
-
-    return (
-        <div>
-            <div
-                className={`flex items-center p-2 rounded-md group ${selectedElementId === node.id ? 'bg-violet-100 dark:bg-violet-900/40' : 'hover:bg-gray-100 dark:hover:bg-slate-700'}`}
-                style={{ paddingLeft: `${level * 1.5}rem` }}
-                onClick={() => onSelect(node.id)}
-            >
-                <div className="flex items-center flex-1 cursor-pointer">
-                    <button
-                        className="mr-2 p-0.5 rounded hover:bg-gray-200 dark:hover:bg-slate-600"
-                        onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }}
-                    >
-                        {hasChildren ? (
-                            <svg className={`w-3 h-3 text-gray-500 dark:text-gray-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
-                            </svg>
-                        ) : <div className="w-3 h-3" />}
-                    </button>
-                    <Icon className="w-4 h-4 mr-2 text-gray-600 dark:text-gray-400" />
-                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{node.label}</span>
-                </div>
-            </div>
-            {hasChildren && isExpanded && ( 
-                <div>
-                    {node.children.map(child => (
-                        <TreeItem
-                            key={child.id}
-                            node={child}
-                            level={level + 1}
-                            selectedElementId={selectedElementId}
-                            onSelect={onSelect}
-                        />
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-};
 
 const MemberManagement: React.FC<{
     element: OrganiserElement;
@@ -264,7 +191,7 @@ const MemberManagement: React.FC<{
 };
 
 
-const OrganiserView: React.FC<OrganiserViewProps> = () => {
+const OrganiserView: React.FC = () => {
     const dispatch: AppDispatch = useDispatch();
     const { currentUser, users: allUsers } = useSelector((state: RootState) => state.users);
     const { organiserElements: elements } = useSelector((state: RootState) => state.organiserElements);

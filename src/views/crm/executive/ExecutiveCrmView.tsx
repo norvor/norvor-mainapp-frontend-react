@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { Contact, Deal, DealStage } from '../../../types';
+import { useSelector } from 'react-redux';
+import { Deal, DealStage } from '../../../types';
+import { RootState } from '../../../store/store';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const AnalyticsDashboard: React.FC<{ deals: Deal[] }> = ({ deals }) => {
@@ -89,14 +91,10 @@ const DataExportView: React.FC = () => (
 );
 
 // Main Executive View Component
-interface ExecutiveCrmViewProps {
-  contacts: Contact[];
-  deals: Deal[];
-}
-
 type ExecutiveViewTab = 'analytics' | 'forecasting' | 'export';
 
-const ExecutiveCrmView: React.FC<ExecutiveCrmViewProps> = ({ contacts, deals }) => {
+const ExecutiveCrmView: React.FC = () => {
+  const { deals } = useSelector((state: RootState) => state.deals);
   const [activeTab, setActiveTab] = useState<ExecutiveViewTab>('analytics');
 
   const renderContent = () => {

@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { memo } from 'react';
 
 // Fix: Updated component props to accept all standard SVG attributes, including onClick.
 const ChevronDownIcon: React.FC<React.SVGProps<SVGSVGElement>> = ({ className = "w-6 h-6", ...props }) => (
@@ -8,4 +8,4 @@ const ChevronDownIcon: React.FC<React.SVGProps<SVGSVGElement>> = ({ className = 
   </svg>
 );
 
-export default ChevronDownIcon;
+export default memo(ChevronDownIcon);

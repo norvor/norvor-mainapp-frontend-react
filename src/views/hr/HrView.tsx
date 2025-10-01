@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
-import { User, UserRole, TimeOffRequest } from '../../types';
+import { User, UserRole } from '../../types';
 import TeamHrView from './team/TeamHrView';
 import ManagementHrView from './management/ManagementHrView';
 import ExecutiveHrView from './executive/ExecutiveHrView';
@@ -8,12 +8,10 @@ import ToolDashboardView from '../tools/ToolDashboardView';
 
 interface HrViewProps {
   viewingUser: User;
-  allUsers: User[];
-  timeOffRequests: TimeOffRequest[];
   directReports: User[];
 }
 
-const HrView: React.FC<HrViewProps> = (props) => {
+const HrView: React.FC<HrViewProps> = ({ viewingUser, directReports }) => {
   const location = useLocation();
   const urlParams = new URLSearchParams(location.search);
   const forcedView = urlParams.get('view');
@@ -22,35 +20,22 @@ const HrView: React.FC<HrViewProps> = (props) => {
     return (
       <ToolDashboardView
         toolId="hr"
-        projects={[]}
-        tasks={[]}
-        users={props.allUsers}
-        currentUser={props.viewingUser}
+        currentUser={viewingUser}
       />
     );
   }
 
-  switch (props.viewingUser.role) {
+  switch (viewingUser.role) {
     case UserRole.TEAM:
       return <TeamHrView 
-                currentUser={props.viewingUser}
-                allUsers={props.allUsers}
-                timeOffRequests={props.timeOffRequests}
+                currentUser={viewingUser}
              />;
     case UserRole.MANAGEMENT:
-      const teamTimeOffRequests = props.timeOffRequests.filter(r => 
-          props.directReports.some(dr => dr.id === r.userId)
-      );
       return <ManagementHrView 
-                currentUser={props.viewingUser}
-                directReports={props.directReports}
-                timeOffRequests={teamTimeOffRequests}
+                directReports={directReports}
              />;
     case UserRole.EXECUTIVE:
-      return <ExecutiveHrView
-                allUsers={props.allUsers}
-                timeOffRequests={props.timeOffRequests}
-             />;
+      return <ExecutiveHrView />;
     default:
       return <div className="text-red-500">Invalid user role.</div>;
   }

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { useDispatch } from 'react-redux';
-import { AppDispatch } from '../../../store/store';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '../../../store/store';
 import { updateContact } from '../../../store/slices/contactSlice';
 import { User, Contact, Deal } from '../../../types';
 import DealKanban from '../../../components/crm/DealKanban';
@@ -18,7 +18,7 @@ const TeamPipelineView: React.FC<{teamMembers: User[], allTeamDeals: Deal[]}> = 
         <div>
             <div className="mb-4">
                 <label htmlFor="team-member-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Select Team Member</label>
-                <select 
+                <select
                     id="team-member-select"
                     className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:outline-none focus:ring-violet-500 focus:border-violet-500 sm:text-sm rounded-md"
                     value={selectedMemberId || ''}
@@ -33,9 +33,9 @@ const TeamPipelineView: React.FC<{teamMembers: User[], allTeamDeals: Deal[]}> = 
 };
 
 const LeadAssignmentView: React.FC<{
-  unassignedContacts: Contact[], 
+  unassignedContacts: Contact[],
   teamMembers: User[],
-  onAssignContact: (contactId: number, ownerId: string | null) => void 
+  onAssignContact: (contactId: number, ownerId: string | null) => void
 }> = ({ unassignedContacts, teamMembers, onAssignContact }) => (
     <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -50,9 +50,9 @@ const LeadAssignmentView: React.FC<{
                 {unassignedContacts.map(contact => (
                     <tr key={contact.id} className="bg-white dark:bg-gray-800">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">{contact.name}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{contact.company}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{contact.companyId}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                            <select 
+                            <select
                                 value={contact.ownerId || ''}
                                 onChange={(e) => onAssignContact(contact.id, e.target.value || null)}
                                 className="border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-md text-sm"
@@ -102,19 +102,25 @@ const TeamDashboardView: React.FC<{teamMembers: User[], allTeamDeals: Deal[]}> =
 interface ManagementCrmViewProps {
   currentUser: User;
   teamMembers: User[];
-  unassignedContacts: Contact[];
-  allTeamDeals: Deal[];
-  allTeamContacts: Contact[];
 }
 
 type ManagementViewTab = 'pipeline' | 'assignment' | 'dashboard';
 
-const ManagementCrmView: React.FC<ManagementCrmViewProps> = (props) => {
+const ManagementCrmView: React.FC<ManagementCrmViewProps> = ({ currentUser, teamMembers }) => {
   const [activeTab, setActiveTab] = useState<ManagementViewTab>('pipeline');
   const dispatch: AppDispatch = useDispatch();
 
+  const { contacts } = useSelector((state: RootState) => state.contacts);
+  const { deals } = useSelector((state: RootState) => state.deals);
+  
+  const unassignedContacts = useMemo(() => contacts.filter(c => !c.ownerId), [contacts]);
+  const allTeamDeals = useMemo(() => {
+      const teamMemberIds = new Set(teamMembers.map(m => m.id));
+      return deals.filter(d => teamMemberIds.has(d.ownerId));
+  }, [deals, teamMembers]);
+
   const handleAssignContact = async (contactId: number, ownerId: string | null) => {
-    const contactToUpdate = props.allTeamContacts.find(c => c.id === contactId);
+    const contactToUpdate = contacts.find(c => c.id === contactId);
     if (contactToUpdate) {
         try {
             await dispatch(updateContact({ ...contactToUpdate, ownerId })).unwrap();
@@ -127,9 +133,9 @@ const ManagementCrmView: React.FC<ManagementCrmViewProps> = (props) => {
 
   const renderContent = () => {
     switch(activeTab) {
-        case 'pipeline': return <TeamPipelineView teamMembers={props.teamMembers} allTeamDeals={props.allTeamDeals} />;
-        case 'assignment': return <LeadAssignmentView unassignedContacts={props.unassignedContacts} teamMembers={props.teamMembers} onAssignContact={handleAssignContact} />;
-        case 'dashboard': return <TeamDashboardView teamMembers={props.teamMembers} allTeamDeals={props.allTeamDeals} />;
+        case 'pipeline': return <TeamPipelineView teamMembers={teamMembers} allTeamDeals={allTeamDeals} />;
+        case 'assignment': return <LeadAssignmentView unassignedContacts={unassignedContacts} teamMembers={teamMembers} onAssignContact={handleAssignContact} />;
+        case 'dashboard': return <TeamDashboardView teamMembers={teamMembers} allTeamDeals={allTeamDeals} />;
         default: return null;
     }
   };

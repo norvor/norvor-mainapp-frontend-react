@@ -1,47 +1,48 @@
-import React, { useState, useEffect } from 'react'; // <-- ADDED useEffect
-import { User } from '../../types';
-import { useDispatch } from 'react-redux';
-import { AppDispatch } from '../../store/store';
-import { updateUserDetails, fetchCurrentUser } from '../../store/slices/userSlice'; // Import thunks
+import React, { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '../../store/store';
+import { updateUserDetails, fetchCurrentUser } from '../../store/slices/userSlice';
 
-interface ProfileSettingsProps {
-  currentUser: User;
-}
-
-const ProfileSettings: React.FC<ProfileSettingsProps> = ({ currentUser }) => {
+const ProfileSettings: React.FC = () => {
   const dispatch: AppDispatch = useDispatch();
-  const [name, setName] = useState(currentUser.name);
-  const [avatar, setAvatar] = useState(currentUser.avatar || '');
+  const { currentUser } = useSelector((state: RootState) => state.users);
+
+  const [name, setName] = useState('');
+  const [avatar, setAvatar] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
-  // FIX: Reset local state if the currentUser object updates (important if a different part of the app updates the user)
+
   useEffect(() => {
+    if (currentUser) {
       setName(currentUser.name);
       setAvatar(currentUser.avatar || '');
+    }
   }, [currentUser]);
-  
+
+  if (!currentUser) {
+    return (
+      <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">My Profile</h2>
+        <div>Loading profile...</div>
+      </div>
+    );
+  }
+
   const handleSave = async () => {
     setIsSaving(true);
     setError(null);
 
-    // FIX: Ensure null is sent for optional fields if empty.
     const updatePayload = {
       name,
-      avatar: avatar || null, // Send null if the avatar string is empty
+      avatar: avatar || null,
     };
 
     try {
-      // 1. Send update to the backend
-      // We rely on updateUserDetails being correctly implemented to convert avatar (camelCase)
-      // to avatar (snake_case) in the backend payload.
       await dispatch(updateUserDetails({ 
           userId: currentUser.id, 
           update: updatePayload 
       })).unwrap();
       
-      // 2. Fetch the current user to synchronize the header/sidebar display
-      // This is crucial for UI components that rely on the Redux state object.
       await dispatch(fetchCurrentUser()).unwrap(); 
       
       alert('Profile settings saved successfully!');
@@ -60,7 +61,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ currentUser }) => {
       <div className="space-y-4">
         <div className="flex items-center space-x-4">
           <img 
-            key={avatar} // This forces React to create a new <img> element when avatar changes
+            key={avatar}
             src={avatar || 'https://placehold.co/56x56/cccccc/333333?text=AV'} 
             alt="User Avatar" 
             className="h-14 w-14 rounded-full object-cover" 

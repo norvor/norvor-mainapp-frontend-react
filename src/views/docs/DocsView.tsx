@@ -5,7 +5,6 @@ import Placeholder from '@tiptap/extension-placeholder';
 import { useDispatch, useSelector } from 'react-redux';
 import { createDoc, deleteDoc, updateDoc } from '../../store/slices/docSlice';
 import { RootState } from '../../store/store';
-import { User } from '../../types';
 
 import ChevronDownIcon from '../../components/icons/ChevronDownIcon';
 import HamburgerIcon from '../../components/icons/HamburgerIcon';
@@ -30,12 +29,9 @@ interface Doc {
 interface DocNode extends Doc {
     children: DocNode[];
 }
-interface DocsViewProps {
-    currentUser: User;
-}
 
-const NavItem: React.FC<{ 
-    node: DocNode; 
+const NavItem: React.FC<{
+    node: DocNode;
     level: number;
     onSelect: (id: string) => void;
     onDelete: (id: string) => Promise<void>;
@@ -49,21 +45,21 @@ const NavItem: React.FC<{
     };
     return (
         <div>
-            <div 
+            <div
                 onClick={() => onSelect(node.id)}
                 className={`flex items-center p-1.5 rounded-md cursor-pointer group ${activeDocId === node.id ? 'bg-violet-100 dark:bg-violet-900/40' : 'hover:bg-gray-100 dark:hover:bg-slate-700'}`}
                 style={{ paddingLeft: `${level * 16 + 4}px` }}
             >
                 {hasChildren ? (
-                    <ChevronDownIcon 
-                        onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }} 
-                        className={`w-4 h-4 mr-1 text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-transform duration-200 ${isOpen ? 'rotate-0' : '-rotate-90'}`} 
+                    <ChevronDownIcon
+                        onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}
+                        className={`w-4 h-4 mr-1 text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-transform duration-200 ${isOpen ? 'rotate-0' : '-rotate-90'}`}
                     />
                 ) : <div className="w-4 h-4 mr-1 flex-shrink-0"></div>}
                 <span className="text-sm mr-2">{node.icon}</span>
                 <span className="text-sm text-gray-800 dark:text-gray-200 flex-1 truncate">{node.title}</span>
-                <button 
-                    onClick={handleDelete} 
+                <button
+                    onClick={handleDelete}
                     className="p-1 rounded text-gray-400 opacity-0 group-hover:opacity-100 hover:bg-gray-200 hover:text-gray-800 dark:hover:bg-slate-600 dark:hover:text-gray-200"
                 >
                     <TrashIcon />
@@ -80,9 +76,11 @@ const NavItem: React.FC<{
     );
 };
 
-const DocsView: React.FC<DocsViewProps> = ({ currentUser }) => {
+const DocsView: React.FC = () => {
     const dispatch = useDispatch();
     const { docs } = useSelector((state: RootState) => state.docs);
+    const { currentUser } = useSelector((state: RootState) => state.users);
+
 
     // Sidebar state
     const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1024);
@@ -239,13 +237,13 @@ const DocsView: React.FC<DocsViewProps> = ({ currentUser }) => {
                 </div>
                 <div className="flex-grow overflow-y-auto space-y-1 px-2">
                     {docTree.map(rootNode => (
-                        <NavItem 
-                            key={rootNode.id} 
-                            node={rootNode} 
-                            level={0} 
-                            onSelect={handleSelectDoc} 
+                        <NavItem
+                            key={rootNode.id}
+                            node={rootNode}
+                            level={0}
+                            onSelect={handleSelectDoc}
                             onDelete={handleDeleteDoc}
-                            activeDocId={activeDocId} 
+                            activeDocId={activeDocId}
                         />
                     ))}
                 </div>
@@ -267,7 +265,7 @@ const DocsView: React.FC<DocsViewProps> = ({ currentUser }) => {
                             <button onClick={() => editor.chain().focus().toggleStrike().run()} className={`p-2 hover:bg-gray-700 dark:hover:bg-slate-700 ${editor.isActive('strike') ? 'bg-gray-600 dark:bg-slate-600' : ''}`}><s className="no-underline">S</s></button>
                             <button onClick={() => editor.chain().focus().toggleCode().run()} className={`p-2 hover:bg-gray-700 dark:hover:bg-slate-700 ${editor.isActive('code') ? 'bg-gray-600 dark:bg-slate-600' : ''}`}>&lt;/&gt;</button>
                         </BubbleMenu>
-                        <FloatingMenu 
+                        <FloatingMenu
                             editor={editor}
                             shouldShow={({ state }) => {
                                 const { $from } = state.selection;

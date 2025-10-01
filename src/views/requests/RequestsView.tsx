@@ -1,9 +1,10 @@
 // src/views/requests/RequestsView.tsx
 
-import React, { useState } from 'react'; // <--- ADD useState
-import { useDispatch } from 'react-redux'; // <--- ADD useDispatch
+import React, { useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState, AppDispatch } from '../../store/store';
 import { Ticket, TicketStatus, User } from '../../types';
-import { submitTicket } from '../../store/slices/ticketSlice'; // <--- IMPORT submitTicket THUNK
+import { submitTicket } from '../../store/slices/ticketSlice';
 
 const getStatusColor = (status: TicketStatus) => {
     switch (status) {
@@ -15,44 +16,39 @@ const getStatusColor = (status: TicketStatus) => {
 
 interface RequestsViewProps {
     teamId: string;
-    tickets: Ticket[];
-    allUsers: User[];
     currentUser: User;
 }
 
-const RequestsView: React.FC<RequestsViewProps> = ({ teamId, tickets, allUsers, currentUser }) => {
-    const dispatch = useDispatch(); // <--- Initialize useDispatch
+const RequestsView: React.FC<RequestsViewProps> = ({ teamId, currentUser }) => {
+    const dispatch: AppDispatch = useDispatch();
+    const { tickets } = useSelector((state: RootState) => state.tickets);
+    const { users: allUsers } = useSelector((state: RootState) => state.users);
     
-    // --- 1. Form State ---
     const [formTitle, setFormTitle] = useState('');
     const [formDescription, setFormDescription] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const getUserName = (userId: number) => {
+    const getUserName = (userId: string) => {
         return allUsers.find(u => u.id === userId)?.name || 'Unknown User';
     };
     
-    // --- 2. Submit Handler ---
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!formTitle.trim()) return;
 
         setIsSubmitting(true);
         
-        // Prepare the payload for the thunk
         const newTicketPayload = {
             title: formTitle,
-            description: formDescription.trim() || null,
+            description: formDescription.trim() || '',
             submittedBy: currentUser.id,
             teamId: teamId,
-            status: TicketStatus.OPEN, // Default status on creation (as per backend schema)
-        };
+            status: TicketStatus.OPEN,
+        } as Omit<Ticket, 'id' | 'createdAt'>;
         
         try {
-            // Dispatch the thunk and unwrap the promise to handle success/failure
             await dispatch(submitTicket(newTicketPayload)).unwrap();
 
-            // Clear the form on success
             setFormTitle('');
             setFormDescription('');
             alert('Request submitted successfully!');
@@ -68,7 +64,6 @@ const RequestsView: React.FC<RequestsViewProps> = ({ teamId, tickets, allUsers, 
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Ticket List */}
             <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
                 <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">Incoming Requests</h2>
                 <div className="space-y-4">
@@ -92,10 +87,8 @@ const RequestsView: React.FC<RequestsViewProps> = ({ teamId, tickets, allUsers, 
                 </div>
             </div>
 
-            {/* New Ticket Form */}
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
                 <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">Submit a Request</h2>
-                {/* 3. Link form to handleSubmit */}
                 <form className="space-y-4" onSubmit={handleSubmit}>
                     <div>
                         <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Title</label>
@@ -120,7 +113,7 @@ const RequestsView: React.FC<RequestsViewProps> = ({ teamId, tickets, allUsers, 
                     </div>
                     <button 
                         type="submit" 
-                        disabled={isSubmitting || !formTitle.trim()} // Disable if submitting or title is empty
+                        disabled={isSubmitting || !formTitle.trim()}
                         className="w-full px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-md hover:bg-violet-700 disabled:bg-violet-400 disabled:cursor-not-allowed"
                     >
                         {isSubmitting ? 'Submitting...' : 'Submit Request'}

@@ -1,5 +1,6 @@
-
 import React, { useState, useMemo } from 'react';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../../store/store';
 import { User, Project, Task } from '../../../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
 
@@ -85,22 +86,30 @@ const ProjectReportsView: React.FC<{projects: Project[]}> = ({ projects }) => {
 
 // Main Component
 interface ManagementProjectsViewProps {
-  currentUser: User;
-  projects: Project[];
-  tasks: Task[];
   teamMembers: User[];
 }
 
 type ManagementProjectsTab = 'create' | 'gantt' | 'reports';
 
-const ManagementProjectsView: React.FC<ManagementProjectsViewProps> = (props) => {
+const ManagementProjectsView: React.FC<ManagementProjectsViewProps> = ({ teamMembers }) => {
+  const { projects } = useSelector((state: RootState) => state.projects);
+  const { tasks } = useSelector((state: RootState) => state.tasks);
+  const { currentUser } = useSelector((state: RootState) => state.users);
+
   const [activeTab, setActiveTab] = useState<ManagementProjectsTab>('gantt');
+
+  const managedProjects = useMemo(() => {
+    if (!currentUser) return [];
+    return projects.filter(p => 
+        teamMembers.some(tm => tm.id === p.managerId) || p.managerId === currentUser.id
+    );
+  }, [projects, teamMembers, currentUser]);
 
   const renderContent = () => {
     switch(activeTab) {
-        case 'create': return <ProjectCreationForm teamMembers={props.teamMembers}/>;
-        case 'gantt': return <GanttChartView projects={props.projects} tasks={props.tasks} />;
-        case 'reports': return <ProjectReportsView projects={props.projects}/>;
+        case 'create': return <ProjectCreationForm teamMembers={teamMembers}/>;
+        case 'gantt': return <GanttChartView projects={managedProjects} tasks={tasks} />;
+        case 'reports': return <ProjectReportsView projects={managedProjects}/>;
     }
   };
 

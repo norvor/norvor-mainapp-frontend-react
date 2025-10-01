@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../store/store';
 import { OrganiserElement, UserRole } from '../../types';
 import apiClient from '../../utils/apiClient';
 
@@ -11,12 +13,14 @@ interface NewUserInput {
 }
 
 interface AddUsersStepProps {
-  departments: OrganiserElement[];
   onBack: () => void;
   onFinish: () => void;
 }
 
-const AddUsersStep: React.FC<AddUsersStepProps> = ({ departments, onBack, onFinish }) => {
+const AddUsersStep: React.FC<AddUsersStepProps> = ({ onBack, onFinish }) => {
+  const { organiserElements } = useSelector((state: RootState) => state.organiserElements);
+  const departments = organiserElements.filter(el => el.type === 'Department');
+
   const [users, setUsers] = useState<NewUserInput[]>([
     { id: 1, name: '', email: '', role: UserRole.TEAM, department: departments[0]?.label || 'General' },
   ]);

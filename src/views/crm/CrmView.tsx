@@ -1,21 +1,16 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
-import { User, Contact, Deal, Activity, UserRole } from '../../types';
+import { User, UserRole } from '../../types';
 import TeamCrmView from './team/TeamCrmView';
 import ManagementCrmView from './management/ManagementCrmView';
 import ExecutiveCrmView from './executive/ExecutiveCrmView';
 import ToolDashboardView from '../tools/ToolDashboardView';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../store/store';
 
 interface CrmViewProps {
   viewingUser: User;
   teamMembers: User[];
-  allUsers: User[]; 
-  contacts: Contact[];
-  deals: Deal[];
-  activities: Activity[];
-  unassignedContacts: Contact[];
-  allTeamContacts: Contact[];
-  allTeamDeals: Deal[];
   refetchData: () => void;
 }
 
@@ -23,6 +18,8 @@ const CrmView: React.FC<CrmViewProps> = (props) => {
   const location = useLocation();
   const urlParams = new URLSearchParams(location.search);
   const forcedView = urlParams.get('view');
+  const { allUsers } = useSelector((state: RootState) => state.users);
+
 
   if (!forcedView) {
     return (
@@ -30,7 +27,7 @@ const CrmView: React.FC<CrmViewProps> = (props) => {
         toolId="crm"
         projects={[]}
         tasks={[]}
-        users={props.allUsers}
+        users={allUsers}
         currentUser={props.viewingUser}
       />
     );
@@ -39,14 +36,6 @@ const CrmView: React.FC<CrmViewProps> = (props) => {
   const { 
     viewingUser, 
     teamMembers, 
-    allUsers, 
-    contacts, 
-    deals, 
-    activities, 
-    unassignedContacts, 
-    allTeamContacts, 
-    allTeamDeals, 
-    refetchData 
   } = props;
 
   switch (viewingUser.role) {
@@ -54,25 +43,14 @@ const CrmView: React.FC<CrmViewProps> = (props) => {
       return <TeamCrmView 
                 currentUser={viewingUser}
                 teamMembers={teamMembers}
-                allUsers={allUsers} 
-                allContacts={contacts}
-                allDeals={deals}
-                activities={activities} 
-                refetchContacts={refetchData}
              />;
     case UserRole.MANAGEMENT:
       return <ManagementCrmView 
                 currentUser={viewingUser} 
                 teamMembers={teamMembers} 
-                unassignedContacts={unassignedContacts} 
-                allTeamDeals={allTeamDeals} 
-                allTeamContacts={allTeamContacts} 
              />;
     case UserRole.EXECUTIVE:
-      return <ExecutiveCrmView 
-                contacts={contacts} 
-                deals={deals} 
-             />;
+      return <ExecutiveCrmView />;
     default:
       return <div className="text-red-500">Invalid user role.</div>;
   }

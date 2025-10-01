@@ -1,30 +1,17 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Routes, Route, useParams, Navigate, useLocation } from 'react-router-dom';
-import { UserRole, User, Module } from './types';
+import { UserRole, User } from './types';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
-import CrmView from './views/crm/CrmView';
-import PmView from './views/pm/PmView'; // Keeping PmView for structural consistency
-import HrView from './views/hr/HrView';
-import OrganiserView from './views/organiser/OrganiserView';
-import TeamHubView from './views/teamhub/TeamHubView';
-import DocsView from './views/docs/DocsView';
-import RequestsView from './views/requests/RequestsView';
 import { ThemeProvider } from './contexts/ThemeContext';
-import DashboardView from './views/dashboard/DashboardView';
-import SocialView from './views/social/SocialView';
-import SettingsView from './views/settings/SettingsView';
-import OnboardingView from './views/onboarding/OnboardingView';
-import ProjectsView from './views/projects/ProjectsView';
-import ToolDashboardView from './views/tools/ToolDashboardView';
 import apiClient from './utils/apiClient';
 
 // Redux Imports
 import { fetchOrganiserElements } from './store/slices/organiserSlice';
 import { fetchTickets } from './store/slices/ticketSlice';
 import { RootState, AppDispatch } from './store/store';
-import { fetchCompanies } from './store/slices/companySlice'; // <-- ADD THIS IMPORT
+import { fetchCompanies } from './store/slices/companySlice';
 import { fetchActivities } from './store/slices/activitySlice';
 import { fetchUsers, fetchCurrentUser } from './store/slices/userSlice';
 import { fetchContacts } from './store/slices/contactSlice';
@@ -35,24 +22,29 @@ import { fetchTasks } from './store/slices/taskSlice';
 import { fetchTimeOffRequests } from './store/slices/timeOffRequestSlice';
 import { fetchSidebarConfig } from './store/slices/sidebarSlice';
 
+// --- Lazy Loaded View Components ---
+const CrmView = lazy(() => import('./views/crm/CrmView'));
+const HrView = lazy(() => import('./views/hr/HrView'));
+const OrganiserView = lazy(() => import('./views/organiser/OrganiserView'));
+const TeamHubView = lazy(() => import('./views/teamhub/TeamHubView'));
+const DocsView = lazy(() => import('./views/docs/DocsView'));
+const RequestsView = lazy(() => import('./views/requests/RequestsView'));
+const DashboardView = lazy(() => import('./views/dashboard/DashboardView'));
+const SocialView = lazy(() => import('./views/social/SocialView'));
+const SettingsView = lazy(() => import('./views/settings/SettingsView'));
+const OnboardingView = lazy(() => import('./views/onboarding/OnboardingView'));
+const ProjectsView = lazy(() => import('./views/projects/ProjectsView'));
+// ------------------------------------
+
 
 const TeamModuleRenderer = () => {
-    const { teamId: elementId, module } = useParams<{ teamId: string; module: string }>(); 
+    const { teamId: elementId, module } = useParams<{ teamId: string; module: string }>();
     const location = useLocation();
-    
-    // Global State Selectors
+
     const { currentUser, users } = useSelector((state: RootState) => state.users);
     const { organiserElements } = useSelector((state: RootState) => state.organiserElements);
-    const { contacts } = useSelector((state: RootState) => state.contacts);
-    const { deals } = useSelector((state: RootState) => state.deals);
-    const { projects } = useSelector((state: RootState) => state.projects);
-    const { tasks } = useSelector((state: RootState) => state.tasks);
-    const { tickets } = useSelector((state: RootState) => state.tickets);
-    const { activities } = useSelector((state: RootState) => state.activities);
-    const { timeOffRequests } = useSelector((state: RootState) => state.timeOffRequests);
     const dispatch: AppDispatch = useDispatch();
 
-    // --- Dynamic Filters: Get Members from Organiser Element ---
     const activeTeamMembers = useMemo(() => {
         if (!elementId || !users || !organiserElements) return [];
         
@@ -65,15 +57,6 @@ const TeamModuleRenderer = () => {
         return users.filter(user => memberIds.includes(user.id));
     }, [users, organiserElements, elementId]);
 
-    // --- Data filtered to the current team/module context ---
-    const unassignedContacts = useMemo(() => contacts.filter(c => !c.ownerId), [contacts]);
-    const allTeamContacts = useMemo(() => contacts, [contacts]);
-    const allTeamDeals = useMemo(() => deals, [deals]);
-    const allProjects = useMemo(() => projects, [projects]);
-    const allTasks = useMemo(() => tasks, [tasks]);
-    const activeTeamTickets = useMemo(() => tickets.filter(t => t.teamId === elementId), [tickets, elementId]);
-    
-    // --- Contextual User (Forces Role if ?view= is present in URL) ---
     const contextualUser = useMemo(() => {
         if (!currentUser) return null;
 
@@ -90,7 +73,6 @@ const TeamModuleRenderer = () => {
         return currentUser;
 
     }, [currentUser, location.search]);
-    // -----------------------------------------------------------
 
     if (!elementId) {
         return <Navigate to="/dashboard" />;
@@ -98,66 +80,44 @@ const TeamModuleRenderer = () => {
 
     if (!currentUser || !contextualUser) return null;
 
-    // FIX: Simplified switch logic. The individual view components now handle the dashboard logic.
     switch (module) {
         case 'hub':
-            // Renders the main Team Roster view
-            return <TeamHubView elementId={elementId} tickets={activeTeamTickets} teamMembers={activeTeamMembers} projects={allProjects} />;
+            return <TeamHubView elementId={elementId} teamMembers={activeTeamMembers} />;
         
         case 'docs':
-            return <DocsView currentUser={contextualUser} />;
+            return <DocsView />;
 
         case 'requests':
-            return <RequestsView teamId={elementId!} tickets={activeTeamTickets} allUsers={users} currentUser={contextualUser} />;
+            return <RequestsView teamId={elementId} currentUser={contextualUser} />;
         
-        // --- MAIN TOOL VIEW ROUTES (These match the module IDs in your sidebar config) ---
         case 'crm':
-            // CrmView needs to be updated to check for ?view= or default to the Dashboard View
             return <CrmView 
                 viewingUser={contextualUser} 
                 teamMembers={activeTeamMembers} 
-                contacts={contacts} 
-                deals={deals} 
-                activities={activities} 
-                unassignedContacts={unassignedContacts} 
-                allTeamContacts={allTeamContacts} 
-                allTeamDeals={allTeamDeals} 
                 refetchData={() => dispatch(fetchContacts())}
-                allUsers={users}
             />;
         case 'pm':
-            // ProjectsView now handles its own internal dashboard/view selection
             return <ProjectsView 
                 viewingUser={contextualUser} 
-                allUsers={users} 
-                projects={allProjects} 
-                tasks={allTasks} 
                 teamMembers={activeTeamMembers} 
             />;
         case 'hr':
-             // HrView needs to be updated to check for ?view= or default to the Dashboard View
              return <HrView 
                 viewingUser={contextualUser} 
-                allUsers={users} 
-                timeOffRequests={timeOffRequests} 
                 directReports={activeTeamMembers.filter(m => m.managerId === contextualUser.id)}
              />;
-        // ---------------------------------------------------------------------
 
         default:
-            // Final Fallback: if the module is unrecognized, show the Hub.
-            return <TeamHubView elementId={elementId} tickets={activeTeamTickets} teamMembers={activeTeamMembers} projects={allProjects} />;
+            return <TeamHubView elementId={elementId} teamMembers={activeTeamMembers} />;
     }
 };
 
 
 const App: React.FC = () => {
-    // ... (App component initialization remains unchanged)
     const dispatch: AppDispatch = useDispatch();
     const location = useLocation();
 
-    const { currentUser, users, loading: usersLoading, error: usersError } = useSelector((state: RootState) => state.users);
-    const { organiserElements } = useSelector((state: RootState) => state.organiserElements);
+    const { currentUser, loading: usersLoading, error: usersError } = useSelector((state: RootState) => state.users);
     
     const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1024);
     
@@ -177,8 +137,8 @@ const App: React.FC = () => {
         window.history.replaceState({}, document.title, window.location.pathname);
         }
         if (!currentToken) {
-        window.location.href = 'http://localhost:3000/login';
-        //window.location.href = 'https://www.norvorx.com/login';
+        //window.location.href = 'http://localhost:3000/login';
+        window.location.href = 'https://app.norvor.com/login';
         return;
         }
         dispatch(fetchSidebarConfig());
@@ -224,8 +184,14 @@ const App: React.FC = () => {
     }
     
     if (currentUser.role === UserRole.EXECUTIVE && !currentUser.organization?.has_completed_onboarding) {
-        return <OnboardingView currentUser={currentUser} onOnboardingComplete={handleOnboardingComplete} />;
+        return <OnboardingView onOnboardingComplete={handleOnboardingComplete} />;
     }
+
+    const loadingFallback = (
+        <div className="flex h-full w-full items-center justify-center">
+            <p>Loading page...</p>
+        </div>
+    );
 
     return (
         <ThemeProvider>
@@ -234,16 +200,18 @@ const App: React.FC = () => {
             <div className="flex-1 flex flex-col overflow-hidden">
             <Header user={currentUser} onToggleSidebar={toggleSidebar} />
             <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 dark:bg-slate-900 p-6 lg:p-8">
-                <Routes>
-                <Route path="/" element={<Navigate to="/dashboard" />} />
-                <Route path="/dashboard" element={<DashboardView />} />
-                <Route path="/social" element={<SocialView />} />
-                <Route path="/docs" element={<DocsView />} />
-                <Route path="/organiser" element={<OrganiserView />} />
-                <Route path="/settings" element={<SettingsView />} />
-                <Route path="/team/:teamId/:module" element={<TeamModuleRenderer />} />
-                <Route path="/dept/:deptId/:module" element={<TeamModuleRenderer />} />
-                </Routes>
+                <Suspense fallback={loadingFallback}>
+                    <Routes>
+                        <Route path="/" element={<Navigate to="/dashboard" />} />
+                        <Route path="/dashboard" element={<DashboardView />} />
+                        <Route path="/social" element={<SocialView />} />
+                        <Route path="/docs" element={<DocsView />} />
+                        <Route path="/organiser" element={<OrganiserView />} />
+                        <Route path="/settings" element={<SettingsView />} />
+                        <Route path="/team/:teamId/:module" element={<TeamModuleRenderer />} />
+                        <Route path="/dept/:deptId/:module" element={<TeamModuleRenderer />} />
+                    </Routes>
+                </Suspense>
             </main>
             </div>
         </div>

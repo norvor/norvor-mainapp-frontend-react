@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
-import { User, OrganiserElement } from '../../types';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../store/store';
+import { OrganiserElement } from '../../types';
 import OrgStructureStep from './OrgStructureStep';
 import AddUsersStep from './AddUsersStep';
 
 interface OnboardingViewProps {
-  currentUser: User;
   onOnboardingComplete: () => void;
 }
 
-const OnboardingView: React.FC<OnboardingViewProps> = ({ currentUser, onOnboardingComplete }) => {
+const OnboardingView: React.FC<OnboardingViewProps> = ({ onOnboardingComplete }) => {
+  const { currentUser } = useSelector((state: RootState) => state.users);
   const [step, setStep] = useState(1);
   const [orgElements, setOrgElements] = useState<OrganiserElement[]>([]);
 
@@ -18,13 +20,12 @@ const OnboardingView: React.FC<OnboardingViewProps> = ({ currentUser, onOnboardi
   };
 
   const handleUsersSubmit = () => {
-    // After users are added, the final step is to call the completion function
     onOnboardingComplete();
   };
 
-  const getDepartments = () => {
-    return orgElements.filter(el => el.type === 'Department');
-  };
+  if (!currentUser) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-slate-900 p-4">
@@ -38,7 +39,6 @@ const OnboardingView: React.FC<OnboardingViewProps> = ({ currentUser, onOnboardi
           </p>
         </div>
 
-        {/* Step Indicator */}
         <div className="flex justify-center items-center space-x-4">
             <div className={`flex items-center space-x-2 ${step >= 1 ? 'text-violet-600' : 'text-gray-400'}`}>
                 <div className="w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold">{step > 1 ? '✓' : '1'}</div>
@@ -51,14 +51,12 @@ const OnboardingView: React.FC<OnboardingViewProps> = ({ currentUser, onOnboardi
             </div>
         </div>
         
-        {/* Onboarding Steps Content */}
         <div className="pt-6">
           {step === 1 && (
             <OrgStructureStep onSubmit={handleStructureSubmit} />
           )}
           {step === 2 && (
             <AddUsersStep 
-              departments={getDepartments()}
               onBack={() => setStep(1)}
               onFinish={handleUsersSubmit}
             />

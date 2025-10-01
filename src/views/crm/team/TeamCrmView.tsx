@@ -131,16 +131,16 @@ const ContactDetailView: React.FC<{ contact: Contact; activities: Activity[]; cu
                             <option key={type} value={type}>{type}</option>
                         ))}
                     </select>
-                    <textarea 
-                        rows={3} 
-                        placeholder="Log new activity notes..." 
+                    <textarea
+                        rows={3}
+                        placeholder="Log new activity notes..."
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
                         className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:ring-violet-500 focus:border-violet-500 bg-transparent"
                         disabled={isLogging}
                     ></textarea>
-                    <button 
-                        type="submit" 
+                    <button
+                        type="submit"
                         disabled={isLogging || !notes.trim()}
                         className="mt-2 px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-md hover:bg-violet-700 disabled:bg-violet-400"
                     >
@@ -156,17 +156,12 @@ const ContactDetailView: React.FC<{ contact: Contact; activities: Activity[]; cu
 interface TeamCrmViewProps {
   currentUser: User;
   teamMembers: User[];
-  allUsers: User[];
-  allContacts: Contact[];
-  allDeals: Deal[];
-  activities: Activity[];
-  refetchContacts: () => void;
 }
 
 type MainTab = 'companies' | 'contacts' | 'deals';
 type DealView = 'kanban' | 'list';
 
-const TeamCrmView: React.FC<TeamCrmViewProps> = ({ currentUser, teamMembers, allUsers, allContacts, allDeals, activities }) => {
+const TeamCrmView: React.FC<TeamCrmViewProps> = ({ currentUser, teamMembers }) => {
   const [mainTab, setMainTab] = useState<MainTab>('companies');
   const [dealView, setDealView] = useState<DealView>('kanban');
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
@@ -182,7 +177,14 @@ const TeamCrmView: React.FC<TeamCrmViewProps> = ({ currentUser, teamMembers, all
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   
   const dispatch: AppDispatch = useDispatch();
+  
+  // --- Data fetched from Redux store ---
+  const { users: allUsers } = useSelector((state: RootState) => state.users);
+  const { contacts: allContacts } = useSelector((state: RootState) => state.contacts);
+  const { deals: allDeals } = useSelector((state: RootState) => state.deals);
+  const { activities } = useSelector((state: RootState) => state.activities);
   const { companies } = useSelector((state: RootState) => state.companies);
+  // ------------------------------------
 
   const teamMemberIds = useMemo(() => new Set(teamMembers.map(m => m.id)), [teamMembers]);
   const teamContacts = useMemo(() => allContacts.filter(c => c.ownerId && teamMemberIds.has(c.ownerId)), [allContacts, teamMemberIds]);
@@ -300,14 +302,14 @@ const TeamCrmView: React.FC<TeamCrmViewProps> = ({ currentUser, teamMembers, all
                 />
             );
         case 'contacts':
-            return selectedContact 
-                ? <ContactDetailView 
-                    contact={selectedContact} 
-                    activities={contactActivities} 
+            return selectedContact
+                ? <ContactDetailView
+                    contact={selectedContact}
+                    activities={contactActivities}
                     currentUser={currentUser}
-                    onBack={() => setSelectedContact(null)} 
+                    onBack={() => setSelectedContact(null)}
                   />
-                : <ContactListView 
+                : <ContactListView
                     contacts={teamContacts}
                     companies={companies}
                     onSelectContact={setSelectedContact}
@@ -329,7 +331,7 @@ const TeamCrmView: React.FC<TeamCrmViewProps> = ({ currentUser, teamMembers, all
   return (
     <div>
       {isContactModalOpen && (
-        <ContactEditorModal 
+        <ContactEditorModal
             contact={editingContact}
             currentUser={currentUser}
             companies={companies}
@@ -385,7 +387,7 @@ const TeamCrmView: React.FC<TeamCrmViewProps> = ({ currentUser, teamMembers, all
                 </div>
             )}
              <div className="relative">
-                <button 
+                <button
                   onClick={() => {
                       if (mainTab === 'contacts') setIsContactModalOpen(true);
                       if (mainTab === 'deals') setIsDealModalOpen(true);

@@ -1,13 +1,12 @@
 import React, { useMemo, useState } from 'react';
-import { Project, Task, User, UserRole, ProjectStatus } from '../../types';
+import { User, UserRole } from '../../types';
 import { Link, useParams } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../store/store';
 
 interface ToolDashboardViewProps {
   toolId: string;
-  projects: Project[];
-  tasks: Task[];
-  users: User[];
-  currentUser: User; // Added current user for role check
+  currentUser: User; 
 }
 
 // --- Generic Widget Components ---
@@ -67,9 +66,8 @@ const OpenItemsWidget: React.FC<{ toolId: string, currentUser: User }> = ({ tool
 };
 
 // --- Main ToolDashboardView Component ---
-const ToolDashboardView: React.FC<ToolDashboardViewProps> = (props) => {
-    const { toolId, currentUser, projects, tasks, users } = props;
-    const { teamId: elementId } = useParams<{ teamId: string }>(); // Use elementId for routing
+const ToolDashboardView: React.FC<ToolDashboardViewProps> = ({ toolId, currentUser }) => {
+    const { teamId: elementId } = useParams<{ teamId: string }>(); 
 
     // --- 1. Define View Options based on User Role ---
     const VIEWS = useMemo(() => {
@@ -88,16 +86,12 @@ const ToolDashboardView: React.FC<ToolDashboardViewProps> = (props) => {
             options.push({ id: UserRole.EXECUTIVE, label: 'Executive Control Center', requiredRole: UserRole.EXECUTIVE });
         }
         
-        // Filter options to ensure only relevant roles are shown based on the current user's hierarchy
         return options; 
     }, [currentUser.role]);
 
     // --- 2. Link Generation Function ---
-    // Clicking this link routes back to the main tool component (e.g., /pm) but 
-    // forces the role-specific view using a query parameter.
     const getLinkToView = (role: UserRole) => {
         const linkRole = role.toLowerCase();
-        // Route format: /team/elementId/toolId?view=team/management/executive
         return `/team/${elementId}/${toolId}?view=${linkRole}`;
     }
 
@@ -111,7 +105,6 @@ const ToolDashboardView: React.FC<ToolDashboardViewProps> = (props) => {
                 <StatusWidget toolId={toolId} currentUser={currentUser} />
                 <OpenItemsWidget toolId={toolId} currentUser={currentUser} />
                 
-                {/* Generic contextual widget for messaging/announcements */}
                  <div className="p-5 bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-slate-700">
                      <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-3">Team Announcement</h3>
                      <p className="text-sm text-gray-500 dark:text-gray-400">All team members: Complete the mandatory Q3 training by Friday.</p>

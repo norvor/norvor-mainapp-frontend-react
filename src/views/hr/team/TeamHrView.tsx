@@ -1,9 +1,10 @@
 // src/views/hr/team/TeamHrView.tsx
 
 import React, { useState, useMemo } from 'react';
-import { useDispatch } from 'react-redux'; // <-- ADD useDispatch
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState, AppDispatch } from '../../../store/store';
 import { User, TimeOffRequest, RequestStatus, LeaveType } from '../../../types';
-import { submitTimeOffRequest } from '../../../store/slices/timeOffRequestSlice'; // <-- IMPORT submitTimeOffRequest
+import { submitTimeOffRequest } from '../../../store/slices/timeOffRequestSlice';
 
 // Sub-components
 
@@ -26,7 +27,7 @@ const MyProfileView: React.FC<{ user: User }> = ({ user }) => (
 );
 
 const TimeOffView: React.FC<{ user: User, requests: TimeOffRequest[] }> = ({ user, requests }) => {
-    const dispatch = useDispatch();
+    const dispatch: AppDispatch = useDispatch();
     const [isRequesting, setIsRequesting] = useState(false);
     
     // Form State
@@ -49,9 +50,7 @@ const TimeOffView: React.FC<{ user: User, requests: TimeOffRequest[] }> = ({ use
             endDate,
             reason,
             status: RequestStatus.PENDING,
-            // The backend expects snake_case for user_id in the create schema
-
-        } as Omit<TimeOffRequest, 'id'> & { user_id: number }; // Correct type for payload
+        } as Omit<TimeOffRequest, 'id'> & { user_id: string };
         
         try {
             await dispatch(submitTimeOffRequest(newRequest)).unwrap();
@@ -179,14 +178,15 @@ const CompanyDirectory: React.FC<{ users: User[] }> = ({ users }) => (
 // Main Component
 interface TeamHrViewProps {
   currentUser: User;
-  allUsers: User[];
-  timeOffRequests: TimeOffRequest[];
 }
 
 type TeamHrTab = 'profile' | 'time-off' | 'directory';
 
-const TeamHrView: React.FC<TeamHrViewProps> = ({ currentUser, allUsers, timeOffRequests }) => {
+const TeamHrView: React.FC<TeamHrViewProps> = ({ currentUser }) => {
   const [activeTab, setActiveTab] = useState<TeamHrTab>('profile');
+  const { users: allUsers } = useSelector((state: RootState) => state.users);
+  const { timeOffRequests } = useSelector((state: RootState) => state.timeOffRequests);
+
   const myRequests = useMemo(() => timeOffRequests.filter(r => r.userId === currentUser.id), [timeOffRequests, currentUser.id]);
 
   const renderContent = () => {
