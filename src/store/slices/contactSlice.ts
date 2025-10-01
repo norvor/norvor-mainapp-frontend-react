@@ -6,7 +6,7 @@ import { Contact } from '../../types';
 const toFrontendContact = (backendContact: any): Contact => ({
     id: backendContact.id,
     name: backendContact.name,
-    company: backendContact.company,
+    companyId: backendContact.company_id,
     email: backendContact.email,
     phone: backendContact.phone,
     ownerId: backendContact.owner_id,
@@ -33,7 +33,7 @@ export const fetchContacts = createAsyncThunk('contacts/fetchContacts', async ()
 export const createContact = createAsyncThunk('contacts/createContact', async (contactData: Omit<Contact, 'id' | 'createdAt'>) => {
     const payload = {
       name: contactData.name,
-      company: contactData.company,
+      company_id: contactData.companyId,
       email: contactData.email,
       phone: contactData.phone,
       owner_id: contactData.ownerId,
@@ -45,7 +45,7 @@ export const createContact = createAsyncThunk('contacts/createContact', async (c
 export const updateContact = createAsyncThunk('contacts/updateContact', async (contact: Contact) => {
     const payload = {
       name: contact.name,
-      company: contact.company,
+      company_id: contact.companyId,
       email: contact.email,
       phone: contact.phone,
       owner_id: contact.ownerId,

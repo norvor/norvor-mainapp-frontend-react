@@ -122,7 +122,8 @@ const TeamModuleRenderer = () => {
                 unassignedContacts={unassignedContacts} 
                 allTeamContacts={allTeamContacts} 
                 allTeamDeals={allTeamDeals} 
-                refetchData={() => dispatch(fetchContacts())} 
+                refetchData={() => dispatch(fetchContacts())}
+                allUsers={users}
             />;
         case 'pm':
             // ProjectsView now handles its own internal dashboard/view selection

@@ -10,48 +10,59 @@ import { logActivity } from '../../../store/slices/activitySlice';
 import DealEditorModal from '../../../components/crm/DealEditorModal';
 import { createDeal, updateDeal, deleteDeal } from '../../../store/slices/dealSlice';
 import CompanyListView from '../../../components/crm/CompanyListView';
+import CompanyDetailView from '../../../components/crm/CompanyDetailView';
+import { createCompany } from '../../../store/slices/companySlice';
+import CompanyEditorModal from '../../../components/crm/CompanyEditorModal';
 
-// --- ContactListView and ContactDetailView components remain unchanged ---
+
 const ContactListView: React.FC<{
     contacts: Contact[];
+    companies: Company[];
     onSelectContact: (contact: Contact) => void;
     onEditContact: (contact: Contact) => void;
-}> = ({ contacts, onSelectContact, onEditContact }) => (
-    <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-700/50">
-                <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Name</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Company</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Email & Phone</th>
-                    <th scope="col" className="relative px-6 py-3">
-                        <span className="sr-only">Edit</span>
-                    </th>
-                </tr>
-            </thead>
-            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {contacts.map((contact) => (
-                    <tr key={contact.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 group">
-                        <td onClick={() => onSelectContact(contact)} className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100 cursor-pointer">{contact.name}</td>
-                        <td onClick={() => onSelectContact(contact)} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 cursor-pointer">{contact.companyId}</td>
-                        <td onClick={() => onSelectContact(contact)} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 cursor-pointer">
-                            <div>{contact.email}</div>
-                            <div>{contact.phone}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <button onClick={() => onEditContact(contact)} className="text-violet-600 hover:text-violet-900 opacity-0 group-hover:opacity-100 transition-opacity">Edit</button>
-                        </td>
-                    </tr>
-                ))}
-                 {contacts.length === 0 && (
+}> = ({ contacts, companies, onSelectContact, onEditContact }) => {
+    const getCompanyName = (companyId: number | null) => {
+        if (!companyId) return 'N/A';
+        return companies.find(c => c.id === companyId)?.name || 'Unknown Company';
+    };
+
+    return (
+        <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-700/50">
                     <tr>
-                        <td colSpan={4} className="text-center py-8 text-gray-500">You haven't created any contacts yet.</td>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Name</th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Company</th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Email & Phone</th>
+                        <th scope="col" className="relative px-6 py-3">
+                            <span className="sr-only">Edit</span>
+                        </th>
                     </tr>
-                )}
-            </tbody>
-        </table>
-    </div>
-);
+                </thead>
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {contacts.map((contact) => (
+                        <tr key={contact.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 group">
+                            <td onClick={() => onSelectContact(contact)} className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100 cursor-pointer">{contact.name}</td>
+                            <td onClick={() => onSelectContact(contact)} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 cursor-pointer">{getCompanyName(contact.companyId)}</td>
+                            <td onClick={() => onSelectContact(contact)} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 cursor-pointer">
+                                <div>{contact.email}</div>
+                                <div>{contact.phone}</div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <button onClick={() => onEditContact(contact)} className="text-violet-600 hover:text-violet-900 opacity-0 group-hover:opacity-100 transition-opacity">Edit</button>
+                            </td>
+                        </tr>
+                    ))}
+                     {contacts.length === 0 && (
+                        <tr>
+                            <td colSpan={4} className="text-center py-8 text-gray-500">You haven't created any contacts yet.</td>
+                        </tr>
+                    )}
+                </tbody>
+            </table>
+        </div>
+    );
+};
 
 const ContactDetailView: React.FC<{ contact: Contact; activities: Activity[]; currentUser: User; onBack: () => void; }> = ({ contact, activities, currentUser, onBack }) => {
     const dispatch = useDispatch();
@@ -278,7 +289,7 @@ const TeamCrmView: React.FC<TeamCrmViewProps> = ({ currentUser, teamMembers, all
                     company={selectedCompany}
                     contacts={companyContacts}
                     deals={companyDeals}
-                    users={users}
+                    users={allUsers}
                     currentUser={currentUser}
                     onBack={() => setSelectedCompany(null)}
                 />
@@ -297,7 +308,8 @@ const TeamCrmView: React.FC<TeamCrmViewProps> = ({ currentUser, teamMembers, all
                     onBack={() => setSelectedContact(null)} 
                   />
                 : <ContactListView 
-                    contacts={teamContacts} 
+                    contacts={teamContacts}
+                    companies={companies}
                     onSelectContact={setSelectedContact}
                     onEditContact={(contact) => { setEditingContact(contact); setIsContactModalOpen(true); }}
                   />;
@@ -306,7 +318,7 @@ const TeamCrmView: React.FC<TeamCrmViewProps> = ({ currentUser, teamMembers, all
                 return <DealKanban deals={teamDeals} onDealClick={handleDealClick} />;
             }
             if (dealView === 'list') {
-                return <DealListView deals={teamDeals} users={users} onDealClick={handleDealClick} />;
+                return <DealListView deals={teamDeals} users={allUsers} onDealClick={handleDealClick} />;
             }
             return null;
         default:

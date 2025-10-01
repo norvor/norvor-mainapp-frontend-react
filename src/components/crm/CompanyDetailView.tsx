@@ -27,9 +27,11 @@ const CompanyDetailView: React.FC<CompanyDetailViewProps> = ({ company, contacts
 
   const getUserName = (ownerId: string | null) => {
     if (!ownerId) return 'N/A';
+    // Add a check to ensure users is not undefined
+    if (!users) return 'Unknown'; 
     return users.find(u => u.id === ownerId)?.name || 'Unknown';
   };
-
+  
   return (
     <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 animate-fade-in">
       <button onClick={onBack} className="mb-4 text-sm font-medium text-violet-600 hover:underline">
