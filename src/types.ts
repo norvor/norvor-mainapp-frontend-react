@@ -11,11 +11,11 @@ export interface Organization {
 }
 
 export interface User {
-  id: string; // Changed from number
+  id: string;
   name: string;
   role: UserRole;
   avatar: string;
-  managerId?: string; // Changed from number
+  managerId?: string;
   teamIds?: string[];
   title: string;
   department: string;
@@ -24,17 +24,23 @@ export interface User {
   address: string;
   emergencyContact: string;
   leaveBalance?: { [key: string]: number };
-  organization: Organization; 
+  organization: Organization;
 }
 
+export interface Company {
+  id: number;
+  name: string;
+  domain: string | null;
+  organizationId: number;
+}
 
 export interface Contact {
   id: number;
   name: string;
-  company: string;
+  companyId: number | null;
   email: string;
   phone: string;
-  ownerId: string | null; // Changed from number
+  ownerId: string | null;
   createdAt: string;
 }
 
@@ -42,6 +48,7 @@ export enum ActivityType {
   CALL = 'Call',
   EMAIL = 'Email',
   MEETING = 'Meeting',
+  NOTE = 'Note',
 }
 
 export interface Activity {
@@ -50,7 +57,7 @@ export interface Activity {
   notes: string;
   date: string;
   contactId: number;
-  userId: string; // Changed from number
+  userId: string;
 }
 
 export enum DealStage {
@@ -66,12 +73,27 @@ export interface Deal {
   name: string;
   value: number;
   stage: DealStage;
+  companyId: number;
   contactId: number;
-  ownerId: string; // Changed from number
+  ownerId: string;
   closeDate: string;
 }
 
-// --- Project Management Types ---
+export enum CrmTaskStatus {
+    NOT_STARTED = "Not Started",
+    IN_PROGRESS = "In Progress",
+    COMPLETED = "Completed",
+}
+
+export interface CrmTask {
+    id: number;
+    title: string;
+    dueDate: string; // ISO string format
+    status: CrmTaskStatus;
+    ownerId: string;
+    contactId?: number | null;
+    dealId?: number | null;
+}
 
 export enum ProjectStatus {
     ON_TRACK = 'On Track',
@@ -89,12 +111,12 @@ export enum TaskStatus {
 export interface Project {
     id: number;
     name: string;
-    managerId: string; // Changed from number
+    managerId: string;
     status: ProjectStatus;
     progress: number;
     startDate: string;
     endDate: string;
-    memberIds: string[]; // Changed from number[]
+    memberIds: string[];
 }
 
 export interface Task {
@@ -102,18 +124,16 @@ export interface Task {
     name: string;
     description: string;
     status: TaskStatus;
-    assigneeId: string; // Changed from number
+    assigneeId: string;
     projectId: number;
     dueDate: string;
 }
 
-// --- Team Type ---
 export interface Team {
     id: string;
     name: string;
 }
 
-// --- HR Types ---
 export enum LeaveType {
     VACATION = 'Vacation',
     SICK = 'Sick Leave',
@@ -128,7 +148,7 @@ export enum RequestStatus {
 
 export interface TimeOffRequest {
     id: number;
-    userId: string; // Changed from number
+    userId: string;
     type: LeaveType;
     startDate: string;
     endDate: string;
@@ -136,7 +156,6 @@ export interface TimeOffRequest {
     reason: string;
 }
 
-// --- Organiser Types ---
 export enum OrganiserElementType {
     DEPARTMENT = 'Department',
     TEAM = 'Team',
@@ -152,8 +171,6 @@ export interface OrganiserElement {
     properties: { [key: string]: any };
 }
 
-
-// --- Ticket / Request Types ---
 export enum TicketStatus {
     OPEN = 'Open',
     IN_PROGRESS = 'In Progress',
@@ -165,7 +182,7 @@ export interface Ticket {
     title: string;
     description: string;
     status: TicketStatus;
-    submittedBy: string; // Changed from number
+    submittedBy: string;
     teamId: string;
     createdAt: string;
 }

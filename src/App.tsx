@@ -24,9 +24,11 @@ import apiClient from './utils/apiClient';
 import { fetchOrganiserElements } from './store/slices/organiserSlice';
 import { fetchTickets } from './store/slices/ticketSlice';
 import { RootState, AppDispatch } from './store/store';
+import { fetchCompanies } from './store/slices/companySlice'; // <-- ADD THIS IMPORT
 import { fetchActivities } from './store/slices/activitySlice';
 import { fetchUsers, fetchCurrentUser } from './store/slices/userSlice';
 import { fetchContacts } from './store/slices/contactSlice';
+import { fetchCrmTasks } from './store/slices/crmTaskSlice';
 import { fetchDeals } from './store/slices/dealSlice';
 import { fetchProjects } from './store/slices/projectSlice';
 import { fetchTasks } from './store/slices/taskSlice';
@@ -183,8 +185,10 @@ const App: React.FC = () => {
         dispatch(fetchUsers());
         dispatch(fetchContacts());
         dispatch(fetchDeals());
+        dispatch(fetchCompanies());
         dispatch(fetchProjects());
         dispatch(fetchTasks());
+        dispatch(fetchCrmTasks()); 
         dispatch(fetchActivities());
         dispatch(fetchTimeOffRequests());
         dispatch(fetchOrganiserElements());

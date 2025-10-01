@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Contact, User } from '../../types';
+import { Contact, User, Company } from '../../types';
 
 interface ContactEditorModalProps {
   contact?: Contact | null;
   currentUser: User;
+  companies: Company[];
   onClose: () => void;
   onSave: (contactData: any) => void;
   onDelete?: (contactId: number) => void;
@@ -12,31 +13,32 @@ interface ContactEditorModalProps {
 const ContactEditorModal: React.FC<ContactEditorModalProps> = ({
   contact,
   currentUser,
+  companies,
   onClose,
   onSave,
   onDelete,
 }) => {
   const [formData, setFormData] = useState({
     name: '',
-    company: '',
     email: '',
     phone: '',
     owner_id: currentUser.id,
+    company_id: companies[0]?.id || 0,
   });
 
   useEffect(() => {
     if (contact) {
       setFormData({
         name: contact.name || '',
-        company: contact.company || '',
         email: contact.email || '',
         phone: contact.phone || '',
         owner_id: contact.ownerId || currentUser.id,
+        company_id: contact.companyId || companies[0]?.id || 0,
       });
     }
-  }, [contact, currentUser.id]);
+  }, [contact, currentUser.id, companies]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
@@ -74,18 +76,11 @@ const ContactEditorModal: React.FC<ContactEditorModalProps> = ({
               className="w-full mt-1 p-2 border rounded-md bg-transparent dark:border-gray-600"
             />
           </div>
-          <div>
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Company
-            </label>
-            <input
-              type="text"
-              name="company"
-              value={formData.company}
-              onChange={handleChange}
-              required
-              className="w-full mt-1 p-2 border rounded-md bg-transparent dark:border-gray-600"
-            />
+           <div>
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Company</label>
+            <select name="company_id" value={formData.company_id} onChange={handleChange} required className="w-full mt-1 p-2 border rounded-md bg-transparent dark:border-gray-600 dark:bg-gray-800">
+              {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
           </div>
           <div>
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -109,7 +104,6 @@ const ContactEditorModal: React.FC<ContactEditorModalProps> = ({
               name="phone"
               value={formData.phone}
               onChange={handleChange}
-              required
               className="w-full mt-1 p-2 border rounded-md bg-transparent dark:border-gray-600"
             />
           </div>

@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '../../../store/store';
-import { User, Contact, Deal, Activity, ActivityType } from '../../../types';
+import { User, Contact, Deal, Activity, ActivityType, Company } from '../../../types';
 import DealKanban from '../../../components/crm/DealKanban';
 import ContactEditorModal from '../../../components/crm/ContactEditorModal';
 import DealListView from '../../../components/crm/DealListView';
@@ -9,6 +9,7 @@ import { createContact, updateContact, deleteContact } from '../../../store/slic
 import { logActivity } from '../../../store/slices/activitySlice';
 import DealEditorModal from '../../../components/crm/DealEditorModal';
 import { createDeal, updateDeal, deleteDeal } from '../../../store/slices/dealSlice';
+import CompanyListView from '../../../components/crm/CompanyListView';
 
 // --- ContactListView and ContactDetailView components remain unchanged ---
 const ContactListView: React.FC<{
@@ -32,7 +33,7 @@ const ContactListView: React.FC<{
                 {contacts.map((contact) => (
                     <tr key={contact.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 group">
                         <td onClick={() => onSelectContact(contact)} className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100 cursor-pointer">{contact.name}</td>
-                        <td onClick={() => onSelectContact(contact)} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 cursor-pointer">{contact.company}</td>
+                        <td onClick={() => onSelectContact(contact)} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 cursor-pointer">{contact.companyId}</td>
                         <td onClick={() => onSelectContact(contact)} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 cursor-pointer">
                             <div>{contact.email}</div>
                             <div>{contact.phone}</div>
@@ -91,7 +92,7 @@ const ContactDetailView: React.FC<{ contact: Contact; activities: Activity[]; cu
                 &larr; Back to Contact List
             </button>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{contact.name}</h2>
-            <p className="text-gray-500 dark:text-gray-400">{contact.company}</p>
+            <p className="text-gray-500 dark:text-gray-400">{contact.companyId}</p>
             <div className="mt-4 border-t border-gray-200 dark:border-gray-700 pt-4">
                 <p><strong>Email:</strong> {contact.email}</p>
                 <p><strong>Phone:</strong> {contact.phone}</p>
@@ -140,33 +141,39 @@ const ContactDetailView: React.FC<{ contact: Contact; activities: Activity[]; cu
     );
 };
 
+
 interface TeamCrmViewProps {
   currentUser: User;
   teamMembers: User[];
+  allUsers: User[];
   allContacts: Contact[];
   allDeals: Deal[];
   activities: Activity[];
+  refetchContacts: () => void;
 }
 
-type MainTab = 'contacts' | 'deals';
+type MainTab = 'companies' | 'contacts' | 'deals';
 type DealView = 'kanban' | 'list';
 
-const TeamCrmView: React.FC<TeamCrmViewProps> = ({ currentUser, teamMembers, allContacts, allDeals, activities }) => {
-  const [mainTab, setMainTab] = useState<MainTab>('deals');
+const TeamCrmView: React.FC<TeamCrmViewProps> = ({ currentUser, teamMembers, allUsers, allContacts, allDeals, activities }) => {
+  const [mainTab, setMainTab] = useState<MainTab>('companies');
   const [dealView, setDealView] = useState<DealView>('kanban');
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
-  
+  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
 
   const [isDealModalOpen, setIsDealModalOpen] = useState(false);
   const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
+
+  const [isCompanyModalOpen, setIsCompanyModalOpen] = useState(false);
+  const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   
   const dispatch: AppDispatch = useDispatch();
-  const { users } = useSelector((state: RootState) => state.users);
+  const { companies } = useSelector((state: RootState) => state.companies);
 
   const teamMemberIds = useMemo(() => new Set(teamMembers.map(m => m.id)), [teamMembers]);
-
   const teamContacts = useMemo(() => allContacts.filter(c => c.ownerId && teamMemberIds.has(c.ownerId)), [allContacts, teamMemberIds]);
   const teamDeals = useMemo(() => allDeals.filter(d => teamMemberIds.has(d.ownerId)), [allDeals, teamMemberIds]);
   
@@ -175,9 +182,19 @@ const TeamCrmView: React.FC<TeamCrmViewProps> = ({ currentUser, teamMembers, all
     return activities.filter(a => a.contactId === selectedContact.id);
   }, [activities, selectedContact]);
 
+  const companyContacts = useMemo(() => {
+    if (!selectedCompany) return [];
+    return allContacts.filter(c => c.companyId === selectedCompany.id);
+  }, [allContacts, selectedCompany]);
+
+  const companyDeals = useMemo(() => {
+    if (!selectedCompany) return [];
+    return allDeals.filter(d => (d as any).companyId === selectedCompany.id);
+  }, [allDeals, selectedCompany]);
+
   const handleSaveContact = async (contactData: any) => {
     try {
-      const payload = { ...contactData, ownerId: contactData.owner_id };
+      const payload = { ...contactData, ownerId: contactData.owner_id, companyId: contactData.company_id };
       if (editingContact) {
         await dispatch(updateContact({ ...editingContact, ...payload })).unwrap();
       } else {
@@ -206,7 +223,7 @@ const TeamCrmView: React.FC<TeamCrmViewProps> = ({ currentUser, teamMembers, all
 
   const handleSaveDeal = async (dealData: any) => {
     try {
-      const payload = { ...dealData, contactId: dealData.contact_id, ownerId: dealData.owner_id, closeDate: dealData.close_date };
+      const payload = { ...dealData, contactId: dealData.contact_id, ownerId: dealData.owner_id, closeDate: dealData.close_date, companyId: dealData.company_id };
       if (editingDeal) {
         await dispatch(updateDeal({ ...editingDeal, ...payload })).unwrap();
       } else {
@@ -238,8 +255,39 @@ const TeamCrmView: React.FC<TeamCrmViewProps> = ({ currentUser, teamMembers, all
     setIsDealModalOpen(true);
   };
   
+  const handleSaveCompany = async (companyData: Omit<Company, 'id' | 'organizationId'>) => {
+    try {
+      if (editingCompany) {
+        // Update logic will go here
+      } else {
+        await dispatch(createCompany(companyData)).unwrap();
+      }
+      setIsCompanyModalOpen(false);
+      setEditingCompany(null);
+    } catch (error) {
+      console.error("Failed to save company:", error);
+      alert("Error: Could not save company.");
+    }
+  };
+  
   const renderContent = () => {
     switch (mainTab) {
+        case 'companies':
+            return selectedCompany ? (
+                <CompanyDetailView
+                    company={selectedCompany}
+                    contacts={companyContacts}
+                    deals={companyDeals}
+                    users={users}
+                    currentUser={currentUser}
+                    onBack={() => setSelectedCompany(null)}
+                />
+            ) : (
+                <CompanyListView
+                    companies={companies}
+                    onCompanyClick={setSelectedCompany}
+                />
+            );
         case 'contacts':
             return selectedContact 
                 ? <ContactDetailView 
@@ -272,6 +320,7 @@ const TeamCrmView: React.FC<TeamCrmViewProps> = ({ currentUser, teamMembers, all
         <ContactEditorModal 
             contact={editingContact}
             currentUser={currentUser}
+            companies={companies}
             onClose={() => { setIsContactModalOpen(false); setEditingContact(null); }}
             onSave={handleSaveContact}
             onDelete={handleDeleteContact}
@@ -282,6 +331,7 @@ const TeamCrmView: React.FC<TeamCrmViewProps> = ({ currentUser, teamMembers, all
         <DealEditorModal
           deal={editingDeal}
           contacts={teamContacts}
+          companies={companies}
           currentUser={currentUser}
           onClose={() => { setIsDealModalOpen(false); setEditingDeal(null); }}
           onSave={handleSaveDeal}
@@ -289,9 +339,20 @@ const TeamCrmView: React.FC<TeamCrmViewProps> = ({ currentUser, teamMembers, all
         />
       )}
       
+      {isCompanyModalOpen && (
+        <CompanyEditorModal
+          company={editingCompany}
+          onClose={() => { setIsCompanyModalOpen(false); setEditingCompany(null); }}
+          onSave={handleSaveCompany}
+        />
+      )}
+      
       <div className="sm:flex sm:items-center sm:justify-between mb-6">
         <div className="border-b border-gray-200 dark:border-gray-700">
             <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+                <button onClick={() => setMainTab('companies')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${mainTab === 'companies' ? 'border-violet-600 text-violet-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+                    Companies
+                </button>
                 <button onClick={() => setMainTab('contacts')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${mainTab === 'contacts' ? 'border-violet-600 text-violet-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
                     Contacts
                 </button>
@@ -313,10 +374,14 @@ const TeamCrmView: React.FC<TeamCrmViewProps> = ({ currentUser, teamMembers, all
             )}
              <div className="relative">
                 <button 
-                  onClick={() => mainTab === 'contacts' ? setIsContactModalOpen(true) : setIsDealModalOpen(true)}
+                  onClick={() => {
+                      if (mainTab === 'contacts') setIsContactModalOpen(true);
+                      if (mainTab === 'deals') setIsDealModalOpen(true);
+                      if (mainTab === 'companies') setIsCompanyModalOpen(true);
+                  }}
                   className="inline-flex items-center justify-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-violet-600 hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500"
                 >
-                  + Create {mainTab === 'contacts' ? 'Contact' : 'Deal'}
+                  + Create {mainTab === 'companies' ? 'Company' : mainTab === 'contacts' ? 'Contact' : 'Deal'}
                 </button>
             </div>
         </div>

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Deal, Contact, User, DealStage } from '../../types';
+import { Deal, Contact, User, DealStage, Company } from '../../types';
 
 interface DealEditorModalProps {
   deal?: Deal | null;
   contacts: Contact[];
+  companies: Company[];
   currentUser: User;
   onClose: () => void;
   onSave: (dealData: any) => void;
@@ -13,6 +14,7 @@ interface DealEditorModalProps {
 const DealEditorModal: React.FC<DealEditorModalProps> = ({
   deal,
   contacts,
+  companies,
   currentUser,
   onClose,
   onSave,
@@ -23,6 +25,7 @@ const DealEditorModal: React.FC<DealEditorModalProps> = ({
     value: 0,
     stage: DealStage.NEW_LEAD,
     contact_id: contacts[0]?.id || 0,
+    company_id: companies[0]?.id || 0,
     owner_id: currentUser.id,
     close_date: new Date().toISOString().split('T')[0],
   });
@@ -34,11 +37,12 @@ const DealEditorModal: React.FC<DealEditorModalProps> = ({
         value: deal.value || 0,
         stage: deal.stage || DealStage.NEW_LEAD,
         contact_id: deal.contactId,
+        company_id: (deal as any).companyId || companies[0]?.id || 0, // Add companyId
         owner_id: deal.ownerId,
         close_date: deal.closeDate,
       });
     }
-  }, [deal]);
+  }, [deal, companies]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -70,16 +74,22 @@ const DealEditorModal: React.FC<DealEditorModalProps> = ({
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Value ($)</label>
             <input type="number" name="value" value={formData.value} onChange={handleChange} required className="w-full mt-1 p-2 border rounded-md bg-transparent dark:border-gray-600"/>
           </div>
+           <div>
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Company</label>
+            <select name="company_id" value={formData.company_id} onChange={handleChange} required className="w-full mt-1 p-2 border rounded-md bg-transparent dark:border-gray-600 dark:bg-gray-800">
+              {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Primary Contact</label>
+            <select name="contact_id" value={formData.contact_id} onChange={handleChange} required className="w-full mt-1 p-2 border rounded-md bg-transparent dark:border-gray-600 dark:bg-gray-800">
+              {contacts.filter(c => c.companyId === Number(formData.company_id)).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
           <div>
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Stage</label>
             <select name="stage" value={formData.stage} onChange={handleChange} className="w-full mt-1 p-2 border rounded-md bg-transparent dark:border-gray-600 dark:bg-gray-800">
               {Object.values(DealStage).map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-           <div>
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Contact</label>
-            <select name="contact_id" value={formData.contact_id} onChange={handleChange} required className="w-full mt-1 p-2 border rounded-md bg-transparent dark:border-gray-600 dark:bg-gray-800">
-              {contacts.map(c => <option key={c.id} value={c.id}>{c.name} ({c.company})</option>)}
             </select>
           </div>
           <div>

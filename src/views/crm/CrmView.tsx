@@ -39,6 +39,7 @@ const CrmView: React.FC<CrmViewProps> = (props) => {
   const { 
     viewingUser, 
     teamMembers, 
+    allUsers, 
     contacts, 
     deals, 
     activities, 
@@ -53,6 +54,7 @@ const CrmView: React.FC<CrmViewProps> = (props) => {
       return <TeamCrmView 
                 currentUser={viewingUser}
                 teamMembers={teamMembers}
+                allUsers={allUsers} 
                 allContacts={contacts}
                 allDeals={deals}
                 activities={activities} 

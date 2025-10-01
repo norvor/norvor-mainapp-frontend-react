@@ -8,9 +8,10 @@ import activityReducer from './slices/activitySlice';
 import timeOffRequestReducer from './slices/timeOffRequestSlice'; 
 import organiserReducer from './slices/organiserSlice'; 
 import ticketReducer from './slices/ticketSlice'; 
-import sidebarReducer from './slices/sidebarSlice'; // --- ADD THIS IMPORT ---
-import docReducer from './slices/docSlice'; // --- ADDED THIS IMPORT ---
-
+import sidebarReducer from './slices/sidebarSlice';
+import docReducer from './slices/docSlice';
+import companyReducer from './slices/companySlice';
+import crmTaskReducer from './slices/crmTaskSlice';
 
 export const store = configureStore({
   reducer: {
@@ -24,7 +25,9 @@ export const store = configureStore({
     organiserElements: organiserReducer,
     tickets: ticketReducer,
     sidebar: sidebarReducer,
-    docs: docReducer, // --- ADD THIS LINE ---
+    docs: docReducer,
+    companies: companyReducer,
+    crmTasks: crmTaskReducer,
   },
 });
 
