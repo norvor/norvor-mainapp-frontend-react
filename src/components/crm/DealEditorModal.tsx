@@ -7,7 +7,7 @@ interface DealEditorModalProps {
   companies: Company[];
   currentUser: User;
   onClose: () => void;
-  onSave: (dealData: any) => void;
+  onSave: (dealData: Omit<Deal, 'id' | 'dataCupId'>) => void;
   onDelete?: (dealId: number) => void;
 }
 
@@ -24,35 +24,44 @@ const DealEditorModal: React.FC<DealEditorModalProps> = ({
     name: '',
     value: 0,
     stage: DealStage.NEW_LEAD,
-    contact_id: contacts[0]?.id || 0,
-    company_id: companies[0]?.id || 0,
-    owner_id: currentUser.id,
-    close_date: new Date().toISOString().split('T')[0],
+    contactId: 0,
+    companyId: 0,
+    ownerId: currentUser.id,
+    closeDate: new Date().toISOString().split('T')[0],
   });
 
   useEffect(() => {
-    if (deal) {
-      setFormData({
-        name: deal.name || '',
-        value: deal.value || 0,
-        stage: deal.stage || DealStage.NEW_LEAD,
-        contact_id: deal.contactId,
-        company_id: (deal as any).companyId || companies[0]?.id || 0, // Add companyId
-        owner_id: deal.ownerId,
-        close_date: deal.closeDate,
-      });
+    // Set initial company and contact if companies are available
+    if (companies.length > 0) {
+        const initialCompanyId = deal?.companyId || companies[0].id;
+        const relevantContacts = contacts.filter(c => c.companyId === initialCompanyId);
+        
+        setFormData({
+            name: deal?.name || '',
+            value: deal?.value || 0,
+            stage: deal?.stage || DealStage.NEW_LEAD,
+            contactId: deal?.contactId || (relevantContacts.length > 0 ? relevantContacts[0].id : 0),
+            companyId: initialCompanyId,
+            ownerId: deal?.ownerId || currentUser.id,
+            closeDate: deal?.closeDate || new Date().toISOString().split('T')[0],
+        });
     }
-  }, [deal, companies]);
+  }, [deal, companies, contacts, currentUser.id]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    const isNumeric = ['value', 'companyId', 'contactId'].includes(name);
+    setFormData((prev) => ({ ...prev, [name]: isNumeric ? Number(value) : value }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave(formData);
   };
+
+  const filteredContacts = useMemo(() => {
+      return contacts.filter(c => c.companyId === formData.companyId);
+  }, [contacts, formData.companyId]);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 animate-fade-in">
@@ -76,14 +85,14 @@ const DealEditorModal: React.FC<DealEditorModalProps> = ({
           </div>
            <div>
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Company</label>
-            <select name="company_id" value={formData.company_id} onChange={handleChange} required className="w-full mt-1 p-2 border rounded-md bg-transparent dark:border-gray-600 dark:bg-gray-800">
+            <select name="companyId" value={formData.companyId} onChange={handleChange} required className="w-full mt-1 p-2 border rounded-md bg-transparent dark:border-gray-600 dark:bg-gray-800">
               {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
           <div>
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Primary Contact</label>
-            <select name="contact_id" value={formData.contact_id} onChange={handleChange} required className="w-full mt-1 p-2 border rounded-md bg-transparent dark:border-gray-600 dark:bg-gray-800">
-              {contacts.filter(c => c.companyId === Number(formData.company_id)).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            <select name="contactId" value={formData.contactId} onChange={handleChange} required className="w-full mt-1 p-2 border rounded-md bg-transparent dark:border-gray-600 dark:bg-gray-800">
+              {filteredContacts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
           <div>
@@ -94,7 +103,7 @@ const DealEditorModal: React.FC<DealEditorModalProps> = ({
           </div>
           <div>
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Close Date</label>
-            <input type="date" name="close_date" value={formData.close_date} onChange={handleChange} required className="w-full mt-1 p-2 border rounded-md bg-transparent dark:border-gray-600"/>
+            <input type="date" name="closeDate" value={formData.closeDate} onChange={handleChange} required className="w-full mt-1 p-2 border rounded-md bg-transparent dark:border-gray-600"/>
           </div>
           <div className="pt-4 space-y-2">
             <button type="submit" className="w-full bg-violet-600 text-white py-2 rounded-md hover:bg-violet-700 font-semibold">

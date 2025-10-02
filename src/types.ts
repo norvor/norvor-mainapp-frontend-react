@@ -129,9 +129,23 @@ export interface Task {
     dueDate: string;
 }
 
+// --- ADD THIS ENUM ---
+export enum Tool {
+    CRM = "crm",
+    PROJECTS = "pm",
+    DOCS = "docs",
+    HR = "hr",
+    REQUESTS = "requests",
+    DATALABS = "datalabs",
+}
+// ---------------------
+
 export interface Team {
     id: string;
     name: string;
+    // --- ADD THIS LINE ---
+    tools: Tool[];
+    // --------------------
 }
 
 export enum LeaveType {

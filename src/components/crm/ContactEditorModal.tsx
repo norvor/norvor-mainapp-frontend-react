@@ -6,7 +6,7 @@ interface ContactEditorModalProps {
   currentUser: User;
   companies: Company[];
   onClose: () => void;
-  onSave: (contactData: any) => void;
+  onSave: (contactData: Omit<Contact, 'id' | 'createdAt' | 'dataCupId'>) => void;
   onDelete?: (contactId: number) => void;
 }
 
@@ -22,8 +22,8 @@ const ContactEditorModal: React.FC<ContactEditorModalProps> = ({
     name: '',
     email: '',
     phone: '',
-    owner_id: currentUser.id,
-    company_id: companies[0]?.id || 0,
+    ownerId: currentUser.id,
+    companyId: companies[0]?.id || null,
   });
 
   useEffect(() => {
@@ -32,8 +32,8 @@ const ContactEditorModal: React.FC<ContactEditorModalProps> = ({
         name: contact.name || '',
         email: contact.email || '',
         phone: contact.phone || '',
-        owner_id: contact.ownerId || currentUser.id,
-        company_id: contact.companyId || companies[0]?.id || 0,
+        ownerId: contact.ownerId || currentUser.id,
+        companyId: contact.companyId || companies[0]?.id || null,
       });
     }
   }, [contact, currentUser.id, companies]);
@@ -78,7 +78,7 @@ const ContactEditorModal: React.FC<ContactEditorModalProps> = ({
           </div>
            <div>
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Company</label>
-            <select name="company_id" value={formData.company_id} onChange={handleChange} required className="w-full mt-1 p-2 border rounded-md bg-transparent dark:border-gray-600 dark:bg-gray-800">
+            <select name="companyId" value={formData.companyId || ''} onChange={handleChange} required className="w-full mt-1 p-2 border rounded-md bg-transparent dark:border-gray-600 dark:bg-gray-800">
               {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>

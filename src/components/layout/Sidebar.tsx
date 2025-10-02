@@ -38,12 +38,12 @@ const NavButton: React.FC<{
   isSidebarOpen: boolean;
 }> = ({ children, to, isActive, icon, isSidebarOpen }) => {
   return (
-    <Link 
+    <Link
       to={to}
       className={`w-full flex items-center text-left py-2 text-sm font-medium rounded-md transition-all duration-150 group relative
         ${isSidebarOpen ? 'px-4' : 'px-3 justify-center'}
-        ${isActive 
-          ? `bg-white/10 text-violet-300` 
+        ${isActive
+          ? `bg-white/10 text-violet-300`
           : 'text-slate-400 hover:bg-white/5 hover:text-white'
       }`}
       title={!isSidebarOpen ? String(children) : undefined}
@@ -71,8 +71,9 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ currentUser, isOpen, onToggleSidebar }) => {
     const location = useLocation();
     const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
-    
-    const { config: sidebarConfig, loading: sidebarLoading } = useSelector((state: RootState) => state.sidebar);
+
+    // FIX: Provide a fallback empty object to prevent crashing if state.sidebar is undefined
+    const { config: sidebarConfig, loading: sidebarLoading } = useSelector((state: RootState) => state.sidebar) || {};
 
     useEffect(() => {
         const pathParts = location.pathname.split('/');
@@ -88,7 +89,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, isOpen, onToggleSidebar 
   return (
     <div className={`fixed lg:relative inset-y-0 left-0 z-40 bg-gradient-to-b from-gray-900 to-slate-900 text-white flex flex-col shrink-0
                      overflow-y-auto transition-all duration-300 ease-in-out no-scrollbar
-                     ${isOpen ? 'w-72' : 'w-20'} 
+                     ${isOpen ? 'w-72' : 'w-20'}
                      ${!isOpen ? '-translate-x-full' : 'translate-x-0'} lg:translate-x-0`}>
       <div className={`flex items-center justify-between space-x-3 px-4 py-5 border-b border-slate-700/50 h-16 box-border shrink-0 ${!isOpen && 'lg:justify-center'}`}>
         <div className="flex items-center space-x-3">
@@ -108,7 +109,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, isOpen, onToggleSidebar 
             <NavButton to="/organiser" isActive={location.pathname.startsWith('/organiser')} isSidebarOpen={isOpen} icon={<OrganiserIcon />}>Structure</NavButton>
         )}
         <NavButton to="/settings" isActive={location.pathname.startsWith('/settings')} isSidebarOpen={isOpen} icon={<SettingsIcon />}>Settings</NavButton>
-        
+
         {sidebarConfig && sidebarConfig.groups.map(group => (
             <div key={group.title} className="mt-4 border-t border-slate-700/50">
                 <SectionHeader title={group.title} isSidebarOpen={isOpen} />
@@ -118,9 +119,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, isOpen, onToggleSidebar 
                     return (
                         <div key={item.id} className="mt-1">
                             <div onClick={() => toggleSection(item.id)}>
-                                {/* FIX: Force the link to ALWAYS go to 'hub' when clicking the parent item. */}
                                 <NavButton
-                                    to={`/${basePath}/${item.id}/hub`} 
+                                    to={`/${basePath}/${item.id}/hub`}
                                     isActive={location.pathname.includes(`/${basePath}/${item.id}`)}
                                     isSidebarOpen={isOpen}
                                     icon={<Icon />}

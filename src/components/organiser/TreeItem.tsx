@@ -22,7 +22,7 @@ const ELEMENT_ICONS: Record<string, React.FC<{className?: string}>> = {
     [OrganiserElementType.NORVOR_TOOL]: DocsIcon,
 };
 
-const NORVOR_TOOL_DEFINITIONS = [
+export const NORVOR_TOOL_DEFINITIONS = [
     { id: 'crm', label: 'CRM', icon: CrmIcon },
     { id: 'pm', label: 'Projects', icon: PmIcon },
     { id: 'docs', label: 'Library', icon: DocsIcon },

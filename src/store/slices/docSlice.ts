@@ -1,6 +1,7 @@
 // src/store/slices/docSlice.ts
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import apiClient from '../../utils/apiClient';
+import { RootState } from '../store'; // Import RootState to get access to other state
 
 interface Doc {
     id: string;
@@ -8,6 +9,7 @@ interface Doc {
     icon: string;
     parentId: string | null;
     content: string;
+    dataCupId: string;
 }
 
 interface DocState {
@@ -28,11 +30,16 @@ const toBackendCasing = (doc: any) => ({
     icon: doc.icon,
     content: doc.content,
     parent_id: doc.parentId,
+    data_cup_id: doc.dataCupId,
 });
 
 const toFrontendCasing = (backendResponse: any): Doc => ({
-    ...backendResponse,
+    id: backendResponse.id,
+    title: backendResponse.title,
+    icon: backendResponse.icon,
+    content: backendResponse.content,
     parentId: backendResponse.parent_id,
+    dataCupId: backendResponse.data_cup_id,
 });
 
 
@@ -41,8 +48,19 @@ export const fetchDocs = createAsyncThunk('docs/fetchDocs', async () => {
   return (response as any[]).map(toFrontendCasing) as Doc[];
 });
 
-export const createDoc = createAsyncThunk('docs/createDoc', async (docData: Omit<Doc, 'id'>) => {
-    const payload = toBackendCasing(docData);
+export const createDoc = createAsyncThunk('docs/createDoc', async (docData: Omit<Doc, 'id' | 'dataCupId'>, { getState }) => {
+    const state = getState() as RootState;
+    const organizationId = state.users.currentUser?.organization.id;
+
+    if (!organizationId) {
+        throw new Error("Organization ID not found for the current user.");
+    }
+
+    const payload = {
+        ...toBackendCasing(docData),
+        organization_id: organizationId,
+        data_cup_id: "00000000-0000-0000-0000-000000000000" // Placeholder
+    };
     const response = await apiClient('/docs/', { 
         method: 'POST', 
         body: JSON.stringify(payload) 

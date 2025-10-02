@@ -8,7 +8,6 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import apiClient from './utils/apiClient';
 
 // Redux Imports
-import { fetchOrganiserElements } from './store/slices/organiserSlice';
 import { fetchTickets } from './store/slices/ticketSlice';
 import { RootState, AppDispatch } from './store/store';
 import { fetchCompanies } from './store/slices/companySlice';
@@ -20,9 +19,11 @@ import { fetchDeals } from './store/slices/dealSlice';
 import { fetchProjects } from './store/slices/projectSlice';
 import { fetchTasks } from './store/slices/taskSlice';
 import { fetchTimeOffRequests } from './store/slices/timeOffRequestSlice';
-import { fetchSidebarConfig } from './store/slices/sidebarSlice';
+import { fetchTeams } from './store/slices/teamSlice';
+import { fetchOrganiserElements } from './store/slices/organiserSlice';
 
 // --- Lazy Loaded View Components ---
+import NotificationPopup from './components/common/NotificationPopup'; // Import the new component
 const CrmView = lazy(() => import('./views/crm/CrmView'));
 const HrView = lazy(() => import('./views/hr/HrView'));
 const OrganiserView = lazy(() => import('./views/organiser/OrganiserView'));
@@ -104,7 +105,7 @@ const TeamModuleRenderer = () => {
         case 'hr':
              return <HrView 
                 viewingUser={contextualUser} 
-                directReports={activeTeamMembers.filter(m => m.managerId === contextualUser.id)}
+                directReports={users.filter(u => u.managerId === contextualUser.id)}
              />;
 
         default:
@@ -137,11 +138,11 @@ const App: React.FC = () => {
         window.history.replaceState({}, document.title, window.location.pathname);
         }
         if (!currentToken) {
-        //window.location.href = 'http://localhost:3000/login';
-        window.location.href = 'https://app.norvor.com/login';
+        window.location.href = 'http://localhost:3000/login';
+        //window.location.href = 'https://app.norvorx.com/login';
         return;
         }
-        dispatch(fetchSidebarConfig());
+        dispatch(fetchTeams());
         dispatch(fetchCurrentUser());
         dispatch(fetchUsers());
         dispatch(fetchContacts());
@@ -152,7 +153,6 @@ const App: React.FC = () => {
         dispatch(fetchCrmTasks()); 
         dispatch(fetchActivities());
         dispatch(fetchTimeOffRequests());
-        dispatch(fetchOrganiserElements());
         dispatch(fetchTickets());
     }, [dispatch]);
 
@@ -214,6 +214,7 @@ const App: React.FC = () => {
                 </Suspense>
             </main>
             </div>
+            <NotificationPopup />
         </div>
         </ThemeProvider>
     );

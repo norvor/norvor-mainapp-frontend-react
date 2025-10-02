@@ -18,16 +18,11 @@ const CrmView: React.FC<CrmViewProps> = (props) => {
   const location = useLocation();
   const urlParams = new URLSearchParams(location.search);
   const forcedView = urlParams.get('view');
-  const { allUsers } = useSelector((state: RootState) => state.users);
-
 
   if (!forcedView) {
     return (
       <ToolDashboardView
         toolId="crm"
-        projects={[]}
-        tasks={[]}
-        users={allUsers}
         currentUser={props.viewingUser}
       />
     );

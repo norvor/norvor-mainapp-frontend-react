@@ -65,7 +65,7 @@ const ContactListView: React.FC<{
 };
 
 const ContactDetailView: React.FC<{ contact: Contact; activities: Activity[]; currentUser: User; onBack: () => void; }> = ({ contact, activities, currentUser, onBack }) => {
-    const dispatch = useDispatch();
+    const dispatch = useDispatch<AppDispatch>();
     const [notes, setNotes] = useState('');
     const [activityType, setActivityType] = useState<ActivityType>(ActivityType.CALL);
     const [isLogging, setIsLogging] = useState(false);
@@ -186,7 +186,7 @@ const TeamCrmView: React.FC<TeamCrmViewProps> = ({ currentUser, teamMembers }) =
   const { companies } = useSelector((state: RootState) => state.companies);
   // ------------------------------------
 
-  const teamMemberIds = useMemo(() => new Set(teamMembers.map(m => m.id)), [teamMembers]);
+  const teamMemberIds = useMemo(() => new Set([...teamMembers.map(m => m.id), currentUser.id]), [teamMembers, currentUser.id]);
   const teamContacts = useMemo(() => allContacts.filter(c => c.ownerId && teamMemberIds.has(c.ownerId)), [allContacts, teamMemberIds]);
   const teamDeals = useMemo(() => allDeals.filter(d => teamMemberIds.has(d.ownerId)), [allDeals, teamMemberIds]);
   
@@ -202,16 +202,15 @@ const TeamCrmView: React.FC<TeamCrmViewProps> = ({ currentUser, teamMembers }) =
 
   const companyDeals = useMemo(() => {
     if (!selectedCompany) return [];
-    return allDeals.filter(d => (d as any).companyId === selectedCompany.id);
+    return allDeals.filter(d => d.companyId === selectedCompany.id);
   }, [allDeals, selectedCompany]);
 
-  const handleSaveContact = async (contactData: any) => {
+  const handleSaveContact = async (contactData: Omit<Contact, 'id' | 'createdAt' | 'dataCupId'>) => {
     try {
-      const payload = { ...contactData, ownerId: contactData.owner_id, companyId: contactData.company_id };
       if (editingContact) {
-        await dispatch(updateContact({ ...editingContact, ...payload })).unwrap();
+        await dispatch(updateContact({ ...editingContact, ...contactData })).unwrap();
       } else {
-        await dispatch(createContact(payload)).unwrap();
+        await dispatch(createContact(contactData)).unwrap();
       }
       setIsContactModalOpen(false);
       setEditingContact(null);
@@ -234,13 +233,12 @@ const TeamCrmView: React.FC<TeamCrmViewProps> = ({ currentUser, teamMembers }) =
     }
   };
 
-  const handleSaveDeal = async (dealData: any) => {
+  const handleSaveDeal = async (dealData: Omit<Deal, 'id' | 'dataCupId'>) => {
     try {
-      const payload = { ...dealData, contactId: dealData.contact_id, ownerId: dealData.owner_id, closeDate: dealData.close_date, companyId: dealData.company_id };
       if (editingDeal) {
-        await dispatch(updateDeal({ ...editingDeal, ...payload })).unwrap();
+        await dispatch(updateDeal({ ...editingDeal, ...dealData })).unwrap();
       } else {
-        await dispatch(createDeal(payload)).unwrap();
+        await dispatch(createDeal(dealData)).unwrap();
       }
       setIsDealModalOpen(false);
       setEditingDeal(null);

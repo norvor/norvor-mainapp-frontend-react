@@ -1,38 +1,71 @@
 import React, { useState, useMemo } from 'react';
-import { useSelector } from 'react-redux';
-import { RootState } from '../../../store/store';
-import { User, Project, Task } from '../../../types';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState, AppDispatch } from '../../../store/store';
+import { User, Project, Task, ProjectStatus } from '../../../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { createProject } from '../../../store/slices/projectSlice';
 
 // Sub-components
-const ProjectCreationForm: React.FC<{teamMembers: User[]}> = ({ teamMembers }) => (
+const ProjectCreationForm: React.FC<{teamMembers: User[], currentUser: User, onProjectCreated: () => void}> = ({ teamMembers, currentUser, onProjectCreated }) => {
+    const dispatch: AppDispatch = useDispatch();
+    const [name, setName] = useState('');
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+    const [memberIds, setMemberIds] = useState<string[]>([]);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const newProject: Omit<Project, 'id' | 'dataCupId'> = {
+            name,
+            startDate,
+            endDate,
+            managerId: currentUser.id,
+            status: ProjectStatus.ON_TRACK,
+            progress: 0,
+            memberIds,
+        };
+        try {
+            await dispatch(createProject(newProject)).unwrap();
+            onProjectCreated();
+        } catch (error) {
+            console.error("Failed to create project:", error);
+            alert("Error: Could not create project.");
+        }
+    };
+
+    return (
     <div className="bg-white shadow rounded-lg p-6 max-w-2xl mx-auto">
         <h3 className="text-lg font-semibold text-gray-800 mb-4">Create New Project</h3>
-        <form className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
             <div>
                 <label className="text-sm font-medium">Project Name</label>
-                <input type="text" className="w-full mt-1 p-2 border rounded-md text-sm" />
+                <input type="text" value={name} onChange={e => setName(e.target.value)} required className="w-full mt-1 p-2 border rounded-md text-sm" />
             </div>
             <div className="grid grid-cols-2 gap-4">
                 <div>
                     <label className="text-sm font-medium">Start Date</label>
-                    <input type="date" className="w-full mt-1 p-2 border rounded-md text-sm" />
+                    <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} required className="w-full mt-1 p-2 border rounded-md text-sm" />
                 </div>
                 <div>
                     <label className="text-sm font-medium">End Date</label>
-                    <input type="date" className="w-full mt-1 p-2 border rounded-md text-sm" />
+                    <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} required className="w-full mt-1 p-2 border rounded-md text-sm" />
                 </div>
             </div>
              <div>
                 <label className="text-sm font-medium">Add Members</label>
-                <select multiple className="w-full mt-1 p-2 border rounded-md text-sm h-32">
+                <select 
+                    multiple 
+                    value={memberIds} 
+                    onChange={e => setMemberIds(Array.from(e.target.selectedOptions, option => option.value))}
+                    className="w-full mt-1 p-2 border rounded-md text-sm h-32"
+                >
                     {teamMembers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                 </select>
             </div>
-            <button type="button" className="w-full px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-md hover:bg-violet-700">Create Project</button>
+            <button type="submit" className="w-full px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-md hover:bg-violet-700">Create Project</button>
         </form>
     </div>
-);
+)};
 
 const GanttChartView: React.FC<{projects: Project[], tasks: Task[]}> = ({ projects, tasks }) => (
     <div className="bg-white shadow rounded-lg p-6">
@@ -47,7 +80,7 @@ const GanttChartView: React.FC<{projects: Project[], tasks: Task[]}> = ({ projec
                             <div key={task.id} className="flex items-center">
                                 <p className="w-1/4 text-sm truncate pr-2">{task.name}</p>
                                 <div className="w-3/4 bg-gray-200 rounded-full h-4">
-                                    <div className="bg-blue-600 h-4 rounded-full" style={{width: '50%', marginLeft: '10%'}}></div>
+                                    <div className="bg-blue-600 h-4 rounded-full" style={{width: `${task.status === 'Done' ? 100 : 50}%`, marginLeft: '10%'}}></div>
                                 </div>
                             </div>
                         ))}
@@ -107,7 +140,12 @@ const ManagementProjectsView: React.FC<ManagementProjectsViewProps> = ({ teamMem
 
   const renderContent = () => {
     switch(activeTab) {
-        case 'create': return <ProjectCreationForm teamMembers={teamMembers}/>;
+        case 'create': 
+            return <ProjectCreationForm 
+                        teamMembers={teamMembers} 
+                        currentUser={currentUser!} 
+                        onProjectCreated={() => setActiveTab('gantt')}
+                    />;
         case 'gantt': return <GanttChartView projects={managedProjects} tasks={tasks} />;
         case 'reports': return <ProjectReportsView projects={managedProjects}/>;
     }

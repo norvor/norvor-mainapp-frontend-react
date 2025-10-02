@@ -17,23 +17,42 @@ const initialState: TimeOffRequestState = {
   error: null,
 };
 
+// Helper to convert data from backend (snake_case) to frontend (camelCase)
+const toFrontendRequest = (req: any): TimeOffRequest => ({
+    id: req.id,
+    userId: req.user_id,
+    type: req.type,
+    startDate: req.start_date,
+    endDate: req.end_date,
+    status: req.status,
+    reason: req.reason,
+});
+
+
 // 3. Create async thunks for API operations
 
 // Thunk to fetch all time-off requests
 export const fetchTimeOffRequests = createAsyncThunk('timeOffRequests/fetchTimeOffRequests', async () => {
-  // Use the apiClient to fetch data from a mock HR endpoint
   const response = await apiClient('/hr/requests/');
-  return response as TimeOffRequest[];
+  return (response as any[]).map(toFrontendRequest);
 });
 
 // Thunk for submitting a new time-off request (mutation)
 // It accepts the request data excluding the auto-generated 'id'
 export const submitTimeOffRequest = createAsyncThunk('timeOffRequests/submitTimeOffRequest', async (requestData: Omit<TimeOffRequest, 'id'>) => {
+    const payload = {
+        user_id: requestData.userId,
+        type: requestData.type,
+        start_date: requestData.startDate,
+        end_date: requestData.endDate,
+        reason: requestData.reason,
+        status: requestData.status,
+    };
     const response = await apiClient('/hr/requests/', { 
         method: 'POST', 
-        body: JSON.stringify(requestData) 
+        body: JSON.stringify(payload) 
     });
-    return response as TimeOffRequest;
+    return toFrontendRequest(response);
 });
 
 

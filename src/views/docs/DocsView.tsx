@@ -4,7 +4,7 @@ import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import { useDispatch, useSelector } from 'react-redux';
 import { createDoc, deleteDoc, updateDoc } from '../../store/slices/docSlice';
-import { RootState } from '../../store/store';
+import { RootState, AppDispatch } from '../../store/store';
 
 import ChevronDownIcon from '../../components/icons/ChevronDownIcon';
 import HamburgerIcon from '../../components/icons/HamburgerIcon';
@@ -17,15 +17,9 @@ import NumberedListIcon from '../../components/icons/NumberedListIcon';
 import QuoteIcon from '../../components/icons/QuoteIcon';
 import CodeBlockIcon from '../../components/icons/CodeBlockIcon';
 import TrashIcon from '../../components/icons/TrashIcon';
+import { Doc } from '../../types';
 
 // --- TYPES ---
-interface Doc {
-    id: string;
-    title: string;
-    icon: string;
-    parentId: string | null;
-    content: string;
-}
 interface DocNode extends Doc {
     children: DocNode[];
 }
@@ -77,28 +71,24 @@ const NavItem: React.FC<{
 };
 
 const DocsView: React.FC = () => {
-    const dispatch = useDispatch();
+    const dispatch: AppDispatch = useDispatch();
     const { docs } = useSelector((state: RootState) => state.docs);
-    const { currentUser } = useSelector((state: RootState) => state.users);
-
 
     // Sidebar state
     const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1024);
 
     // Active doc state
-    const [activeDocId, setActiveDocId] = useState<string | null>(docs.length > 0 ? docs[0].id : null);
+    const [activeDocId, setActiveDocId] = useState<string | null>(null);
 
-    // Find the active doc
-    const activeDoc = useMemo(() => docs.find(d => d.id === activeDocId) || null, [docs, activeDocId]);
-
-    // Ensure activeDocId is valid after data load/mutation
+    // Set initial active doc
     useEffect(() => {
         if (!activeDocId && docs.length > 0) {
             setActiveDocId(docs[0].id);
-        } else if (activeDocId && !docs.some(d => d.id === activeDocId)) {
-            setActiveDocId(docs.length > 0 ? docs[0].id : null);
         }
     }, [docs, activeDocId]);
+
+    // Find the active doc
+    const activeDoc = useMemo(() => docs.find(d => d.id === activeDocId) || null, [docs, activeDocId]);
 
     // Editor instance
     const editor = useEditor({
@@ -148,15 +138,11 @@ const DocsView: React.FC = () => {
     }, [editor, handleSave]);
 
     // Title change handler
-    const handleTitleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!activeDoc) return;
         const newTitle = e.target.value;
         const updatedDoc: Doc = { ...activeDoc, title: newTitle };
-        try {
-            await dispatch(updateDoc(updatedDoc)).unwrap();
-        } catch (error) {
-            console.error(`Failed to update document title ${activeDoc.id}:`, error);
-        }
+        dispatch(updateDoc(updatedDoc));
     };
 
     // Doc tree for sidebar
@@ -184,10 +170,11 @@ const DocsView: React.FC = () => {
             icon: '📄',
             parentId: activeDocId,
             content: '',
-        } as Omit<Doc, 'id'>;
+        } as Omit<Doc, 'id' | 'dataCupId'>;
         try {
-            const result = await dispatch(createDoc(newDocPayload)).unwrap();
-            setActiveDocId(result.id);
+            const resultAction = await dispatch(createDoc(newDocPayload));
+            const newDoc = resultAction.payload as Doc;
+            setActiveDocId(newDoc.id);
         } catch (error) {
             console.error('Failed to create new document:', error);
         }
@@ -198,6 +185,9 @@ const DocsView: React.FC = () => {
         if (!window.confirm("Are you sure you want to delete this page and all its subpages? This action cannot be undone.")) return;
         try {
             await dispatch(deleteDoc(docIdToDelete)).unwrap();
+            if (activeDocId === docIdToDelete) {
+                setActiveDocId(docs.length > 1 ? docs.find(d => d.id !== docIdToDelete)!.id : null);
+            }
         } catch (error) {
             console.error('Failed to delete document:', error);
             alert("Error: Could not delete document.");
