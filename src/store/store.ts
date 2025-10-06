@@ -4,15 +4,15 @@ import contactReducer from './slices/contactSlice';
 import dealReducer from './slices/dealSlice';
 import projectReducer from './slices/projectSlice';
 import taskReducer from './slices/taskSlice';
-import activityReducer from './slices/activitySlice'; 
-import timeOffRequestReducer from './slices/timeOffRequestSlice'; 
-import organiserReducer from './slices/organiserSlice'; 
-import ticketReducer from './slices/ticketSlice'; 
+import activityReducer from './slices/activitySlice';
+import timeOffRequestReducer from './slices/timeOffRequestSlice';
+import organiserReducer from './slices/organiserSlice';
+import ticketReducer from './slices/ticketSlice';
 import docReducer from './slices/docSlice';
 import companyReducer from './slices/companySlice';
 import crmTaskReducer from './slices/crmTaskSlice';
-import notificationReducer from './slices/notificationSlice'; // Import the new reducer
-import { notificationMiddleware } from './middleware/notificationMiddleware'; // Import the new middleware
+import notificationReducer from './slices/notificationSlice';
+import { notificationMiddleware } from './middleware/notificationMiddleware';
 
 export const store = configureStore({
   reducer: {
@@ -28,9 +28,8 @@ export const store = configureStore({
     docs: docReducer,
     companies: companyReducer,
     crmTasks: crmTaskReducer,
-    notification: notificationReducer, // Add the notification reducer
+    notification: notificationReducer,
   },
-  // Add the middleware to the store
   middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(notificationMiddleware),
 });
 

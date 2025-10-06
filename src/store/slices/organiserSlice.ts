@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import apiClient from '../../utils/apiClient';
-import { OrganiserElement, OrganiserElementType } from '../../types';
+import { OrganiserElement, OrganiserElementType, Tool, User } from '../../types';
+import { RootState } from '../store';
 
 // Define the shape of our organiser state
 interface OrganiserState {
@@ -9,134 +10,143 @@ interface OrganiserState {
   error: string | null;
 }
 
-// Set the initial state
 const initialState: OrganiserState = {
   organiserElements: [],
   loading: false,
   error: null,
 };
 
-// Thunk to fetch all teams and departments and merge them
+// --- READ ---
 export const fetchOrganiserElements = createAsyncThunk('organiser/fetchOrganiserElements', async () => {
     const [departments, teams] = await Promise.all([
         apiClient('/teams/departments/'),
         apiClient('/teams/teams/')
     ]);
 
-    const mappedDepartments = (departments as any[]).map(dept => ({
+    const mappedDepartments: OrganiserElement[] = (departments as any[]).map(dept => ({
         id: dept.id,
         parentId: null,
         type: OrganiserElementType.DEPARTMENT,
         label: dept.name,
-        properties: {},
+        properties: { isHrDept: dept.properties?.isHrDept || false },
     }));
 
-    const mappedTeams = (teams as any[]).map(team => ({
-        id: team.id,
-        parentId: team.department_id,
-        type: OrganiserElementType.TEAM,
-        label: team.name,
-        properties: {},
-    }));
+    let allElements: OrganiserElement[] = [...mappedDepartments];
 
-    return [...mappedDepartments, ...mappedTeams] as OrganiserElement[];
+    (teams as any[]).forEach(team => {
+        const teamElement: OrganiserElement = {
+            id: team.id,
+            parentId: team.department_id,
+            type: OrganiserElementType.TEAM,
+            label: team.name,
+            properties: { 
+                tools: team.tools || [],
+                team_roles: team.team_roles || [] // Store full team_role objects
+            },
+        };
+        allElements.push(teamElement);
+
+        if (team.tools) {
+            team.tools.forEach((toolId: string) => {
+                allElements.push({
+                    id: `${team.id}_${toolId}`,
+                    parentId: team.id,
+                    type: OrganiserElementType.NORVOR_TOOL,
+                    label: toolId.charAt(0).toUpperCase() + toolId.slice(1),
+                    properties: { tool_id: toolId },
+                });
+            });
+        }
+    });
+    return allElements;
 });
 
+// --- CREATE ---
+export const createOrganiserElement = createAsyncThunk(
+    'organiser/createOrganiserElement',
+    async (elementData: Omit<OrganiserElement, 'id'>, { dispatch }) => {
+        if (elementData.type === OrganiserElementType.DEPARTMENT) {
+            await apiClient('/teams/departments/', {
+                method: 'POST', body: JSON.stringify({ name: elementData.label }),
+            });
+        } else if (elementData.type === OrganiserElementType.TEAM) {
+            const payload = { name: elementData.label, department_id: elementData.parentId };
+            await apiClient('/teams/teams/', {
+                method: 'POST', body: JSON.stringify(payload),
+            });
+        }
+        // After creating, refetch everything to ensure the state is consistent
+        dispatch(fetchOrganiserElements());
+    }
+);
 
-// Thunk for creating a new department or team
-export const createOrganiserElement = createAsyncThunk('organiser/createOrganiserElement', async (elementData: Omit<OrganiserElement, 'id'>) => {
-    if (elementData.type === OrganiserElementType.DEPARTMENT) {
-        const response = await apiClient('/teams/departments/', {
-            method: 'POST',
-            body: JSON.stringify({ name: elementData.label }),
-        });
-        return {
-            id: (response as any).id,
-            parentId: null,
-            type: OrganiserElementType.DEPARTMENT,
-            label: (response as any).name,
-            properties: {},
-        } as OrganiserElement;
-    } else if (elementData.type === OrganiserElementType.TEAM) {
-        const payload = {
-            name: elementData.label,
-            department_id: elementData.parentId,
-        };
-        const response = await apiClient('/teams/teams/', {
+// --- UPDATE ---
+export const updateOrganiserElement = createAsyncThunk(
+    'organiser/updateOrganiserElement',
+    async (element: OrganiserElement, { dispatch }) => {
+        if (element.type === OrganiserElementType.DEPARTMENT) {
+            await apiClient(`/teams/departments/${element.id}`, {
+                method: 'PUT', body: JSON.stringify({ name: element.label }),
+            });
+        } else if (element.type === OrganiserElementType.TEAM) {
+            await apiClient(`/teams/teams/${element.id}`, {
+                method: 'PUT', body: JSON.stringify({ name: element.label, tools: element.properties.tools || [] }),
+            });
+        }
+        dispatch(fetchOrganiserElements());
+    }
+);
+
+// --- DELETE ---
+export const deleteOrganiserElement = createAsyncThunk(
+    'organiser/deleteOrganiserElement',
+    async (element: OrganiserElement, { dispatch }) => {
+        if (element.type === OrganiserElementType.DEPARTMENT) {
+            await apiClient(`/teams/departments/${element.id}`, { method: 'DELETE' });
+        } else if (element.type === OrganiserElementType.TEAM) {
+            await apiClient(`/teams/teams/${element.id}`, { method: 'DELETE' });
+        }
+        // After deleting, refetch to update state
+        dispatch(fetchOrganiserElements());
+    }
+);
+
+// --- TEAM MEMBER MANAGEMENT ---
+export const addTeamMember = createAsyncThunk(
+    'organiser/addTeamMember',
+    async ({ teamId, userId, role }: { teamId: string, userId: string, role: string }, { dispatch }) => {
+        const payload = { team_id: teamId, user_id: userId, role };
+        await apiClient('/teams/team_roles/', {
             method: 'POST',
             body: JSON.stringify(payload),
         });
-        return {
-            id: (response as any).id,
-            parentId: (response as any).department_id,
-            type: OrganiserElementType.TEAM,
-            label: (response as any).name,
-            properties: {},
-        } as OrganiserElement;
-    }
-    // Fallback for other types - though not handled by the teams endpoint
-    return elementData as OrganiserElement;
-});
-
-
-// NOTE: The backend does not currently have endpoints to update or delete teams/departments.
-// The code below is set up to work if those endpoints are added in the future.
-
-export const updateOrganiserElement = createAsyncThunk(
-    'organiser/updateOrganiserElement',
-    async (element: OrganiserElement) => {
-        // This is a placeholder. You will need to implement the backend endpoint for this.
-        console.warn("Update functionality is not yet implemented in the backend.");
-        return element;
+        dispatch(fetchOrganiserElements());
     }
 );
 
-export const deleteOrganiserElement = createAsyncThunk(
-    'organiser/deleteOrganiserElement',
-    async (elementId: string) => {
-        // This is a placeholder. You will need to implement the backend endpoint for this.
-        console.warn("Delete functionality is not yet implemented in the backend.");
-        return elementId;
+export const removeTeamMember = createAsyncThunk(
+    'organiser/removeTeamMember',
+    async ({ teamRoleId }: { teamRoleId: string }, { dispatch }) => {
+        await apiClient(`/teams/team_roles/${teamRoleId}`, { method: 'DELETE' });
+        dispatch(fetchOrganiserElements());
     }
 );
 
 
-// Create the slice and handle state changes
 const organiserSlice = createSlice({
   name: 'organiser',
   initialState,
   reducers: {},
   extraReducers: (builder) => {
     builder
-      // Fetching Elements
-      .addCase(fetchOrganiserElements.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
+      .addCase(fetchOrganiserElements.pending, (state) => { state.loading = true; })
       .addCase(fetchOrganiserElements.fulfilled, (state, action: PayloadAction<OrganiserElement[]>) => {
         state.organiserElements = action.payload;
         state.loading = false;
       })
       .addCase(fetchOrganiserElements.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to fetch organiser elements';
-      })
-      // Create
-      .addCase(createOrganiserElement.fulfilled, (state, action: PayloadAction<OrganiserElement | undefined>) => {
-        if (action.payload) {
-            state.organiserElements.push(action.payload);
-        }
-      })
-      // Update
-      .addCase(updateOrganiserElement.fulfilled, (state, action: PayloadAction<OrganiserElement>) => {
-          const index = state.organiserElements.findIndex(el => el.id === action.payload.id);
-          if (index !== -1) {
-              state.organiserElements[index] = action.payload;
-          }
-      })
-      // Delete
-      .addCase(deleteOrganiserElement.fulfilled, (state, action: PayloadAction<string>) => {
-          state.organiserElements = state.organiserElements.filter(el => el.id !== action.payload);
+        state.error = action.error.message || 'Failed to fetch elements';
       });
   },
 });

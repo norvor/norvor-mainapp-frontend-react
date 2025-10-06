@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
-import { User, UserRole } from '../../types';
+import { User, UserRole, OrganiserElementType } from '../../types';
 import ChevronDownIcon from '../icons/ChevronDownIcon';
 
 // Icons
@@ -17,6 +17,8 @@ import OrganiserIcon from '../icons/OrganiserIcon';
 import DashboardIcon from '../icons/DashboardIcon';
 import SocialIcon from '../icons/SocialIcon';
 import SettingsIcon from '../icons/SettingsIcon';
+import DataLabsIcon from '../icons/DataLabsIcon';
+import RequestsIcon from '../icons/RequestsIcon';
 
 const MODULE_ICONS: { [key: string]: React.FC<{className?: string}> } = {
     dashboard: DashboardIcon,
@@ -28,6 +30,8 @@ const MODULE_ICONS: { [key: string]: React.FC<{className?: string}> } = {
     pm: PmIcon,
     docs: DocsIcon,
     hr: HrIcon,
+    datalabs: DataLabsIcon,
+    requests: RequestsIcon,
 };
 
 const NavButton: React.FC<{
@@ -72,8 +76,49 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, isOpen, onToggleSidebar 
     const location = useLocation();
     const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
 
-    // FIX: Provide a fallback empty object to prevent crashing if state.sidebar is undefined
-    const { config: sidebarConfig, loading: sidebarLoading } = useSelector((state: RootState) => state.sidebar) || {};
+    const { organiserElements } = useSelector((state: RootState) => state.organiserElements);
+
+    const sidebarConfig = useMemo(() => {
+        if (!organiserElements) return null;
+
+        const teams = organiserElements
+            .filter(el => el.type === OrganiserElementType.TEAM)
+            .map(team => ({
+                id: team.id,
+                name: team.label,
+                modules: organiserElements
+                    .filter(el => el.parentId === team.id && el.type === OrganiserElementType.NORVOR_TOOL)
+                    .map(moduleEl => ({
+                        id: moduleEl.properties.tool_id,
+                        name: moduleEl.label,
+                    }))
+            }));
+
+        const departments = organiserElements
+            .filter(el => el.type === OrganiserElementType.DEPARTMENT && el.properties.isHrDept)
+            .map(dept => ({
+                id: dept.id,
+                name: dept.label,
+                modules: organiserElements
+                    .filter(el => {
+                        // Find the HR Team within the HR Department
+                        const hrTeam = organiserElements.find(team => team.parentId === dept.id && team.label === 'Human Resources');
+                        return hrTeam && el.parentId === hrTeam.id && el.type === OrganiserElementType.NORVOR_TOOL;
+                    })
+                    .map(moduleEl => ({
+                        id: moduleEl.properties.tool_id,
+                        name: moduleEl.label,
+                    }))
+            }));
+
+        return {
+            groups: [
+                { title: 'Teams', items: teams },
+                { title: 'Departments', items: departments },
+            ]
+        };
+    }, [organiserElements]);
+
 
     useEffect(() => {
         const pathParts = location.pathname.split('/');
